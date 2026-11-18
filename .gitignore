@@ -1,0 +1,8 @@
+# macOS metadata
+.DS_Store
+._*
+
+# Qt Creator settings and compiled QML caches
+*.qmlproject.user*
+*.qmlc
+*.jsc

@@ -6,13 +6,15 @@ import "ButtonColors.js" as Colors
 
 Button {
     property bool primary: false
-    readonly property bool filled: primary || checked
+    property bool destructive: false
+    readonly property var colors: Colors.forTheme(QfTheme.darkTheme)
+    readonly property var buttonColors: primary ? Colors.primary : checked ? colors.selected :
+                                        destructive ? colors.danger : colors.secondary
 
     Material.roundedScale: Material.SmallScale
     Material.elevation: 0
-    Material.foreground: filled ? "white" : Colors.foreground(QfTheme.darkTheme)
+    Material.foreground: buttonColors.foreground
     // Material uses the accent color for a checked button's label.
     Material.accent: Material.foreground
-    Material.background: !enabled ? QfTheme.controlBackgroundDisabledColor :
-                         filled ? Colors.red : Colors.surface(QfTheme.darkTheme)
+    Material.background: enabled ? buttonColors.background : QfTheme.controlBackgroundDisabledColor
 }

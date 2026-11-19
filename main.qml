@@ -57,6 +57,8 @@ Item {
 
     Component.onCompleted: {
         iface.addItemToPluginsToolbar(serviceButton)
+        iface.addItemToPluginsToolbar(placeButton)
+        iface.addItemToPluginsToolbar(routeButton)
         handler.registerHandler(handlerName, pickPoint, QfMapCanvasPointHandler.Priority.High)
     }
     Component.onDestruction: {
@@ -186,7 +188,7 @@ Item {
         target: iface
         function onLoadProjectTriggered() {
             plugin.picking = false
-            serviceMenu.close()
+            serviceButton.checked = false
             settingsPopup.close()
             places.close()
             plugin.preview = null
@@ -201,75 +203,58 @@ Item {
         id: serviceButton
         readonly property int iconSize: Math.round(width * 0.7)
         round: true
+        checkable: true
         bgcolor: "#dd344c"
         padding: 0
         iconSource: plugin.serviceIcon
         iconColor: "transparent"
         icon.width: serviceButton.iconSize
         icon.height: serviceButton.iconSize
-        bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : (serviceMenu.visible ? "▴" : "▾")
+        bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : (checked ? "▴" : "▾")
         bottomRightIndicatorBgColor: Colors.surface(QfTheme.darkTheme)
         bottomRightIndicatorFgColor: plugin.accent
         statusBadge.bottomMargin: 0
         statusBadge.rightMargin: 0
         Accessible.name: plugin.serviceName
-        Accessible.description: serviceMenu.visible ? "検索メニューを閉じる" : "検索メニューを開く"
+        Accessible.description: checked ? "検索ボタンを収納する" : "検索ボタンを表示する"
         ToolTip.text: plugin.serviceName
-        ToolTip.visible: hovered && !serviceMenu.visible
+        ToolTip.visible: hovered && !checked
         ToolTip.delay: 600
-        onClicked: serviceMenu.visible = !serviceMenu.visible
+    }
 
-        Menu {
-            id: serviceMenu
-            width: Math.min(plugin.window.contentItem.width - 2 * plugin.gutter,
-                            Math.max(implicitWidth, menuHeading.implicitWidth + leftPadding + rightPadding))
-            x: serviceButton.width - width
-            y: serviceButton.height
-            padding: 6
-            modal: false
-            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+    component SearchToolButton: QfToolButton {
+        round: true
+        visible: serviceButton.checked
+        display: AbstractButton.IconOnly
+        bgcolor: QfTheme.toolButtonBackgroundColor
+        opacity: enabled ? 1 : 0.4
+        Accessible.name: text
+        ToolTip.text: text
+        ToolTip.visible: hovered
+        ToolTip.delay: serviceButton.ToolTip.delay
+    }
 
-            Label {
-                id: menuHeading
-                text: plugin.serviceName
-                font: QfTheme.strongResultFont
-                leftPadding: plugin.gutter
-                rightPadding: plugin.gutter
-                verticalAlignment: Text.AlignVCenter
-                height: Math.max(implicitHeight, plugin.touchHeight)
-            }
-            SearchMenuItem {
-                text: "POI検索"
-                icon.source: QfTheme.getThemeVectorIcon("ic_baseline_search_white")
-                enabled: !plugin.pending
-                onTriggered: plugin.openPlaces(false)
-            }
-            MenuSeparator {
-                height: plugin.gutter / 2
-                contentItem: null
-            }
-            SearchMenuItem {
-                text: "経路検索"
-                icon.source: Qt.resolvedUrl("icon.svg")
-                icon.color: "transparent"
-                onTriggered: {
-                    plugin.picking = false
-                    plugin.preview = null
-                    panel.open()
-                }
-            }
+    SearchToolButton {
+        id: placeButton
+        text: "POI検索"
+        iconSource: QfTheme.getThemeVectorIcon("ic_baseline_search_white")
+        iconColor: QfTheme.toolButtonColor
+        enabled: !plugin.pending
+        onClicked: {
+            serviceButton.checked = false
+            plugin.openPlaces(false)
         }
     }
 
-    component SearchMenuItem: MenuItem {
-        id: entry
-        height: Math.max(implicitHeight, plugin.touchHeight)
-        Material.foreground: plugin.accent
-        background: Rectangle {
-            radius: 8
-            color: Colors.surface(QfTheme.darkTheme)
-            opacity: entry.enabled ? 1 : 0.4
-            border.color: entry.down || entry.highlighted || entry.hovered ? plugin.accent : "transparent"
+    SearchToolButton {
+        id: routeButton
+        text: "経路検索"
+        iconSource: Qt.resolvedUrl("icon.svg")
+        onClicked: {
+            serviceButton.checked = false
+            plugin.picking = false
+            plugin.preview = null
+            panel.open()
         }
     }
 

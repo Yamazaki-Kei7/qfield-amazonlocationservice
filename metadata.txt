@@ -3,4 +3,4 @@ name=Amazon Location Service
 author=Yamazaki-Kei7
 description=Search places and plan driving routes from your current location, POIs, map points, or layer features
 icon=Arch_Amazon-Location-Service_32.svg
-version=1.6.4
+version=1.7.0

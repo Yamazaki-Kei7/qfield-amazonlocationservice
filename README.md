@@ -45,9 +45,9 @@ URL からインストールできない環境では、[amazon-location-service.
 
 ### 接続設定
 
-地図右上の赤いサービスボタン <img src="Arch_Amazon-Location-Service_32.svg" alt="Amazon Location Service" width="24"> をタップすると、「Amazon Location Service」メニューが開きます。もう一度タップすると閉じます。初回はメニューから「POI検索」か「経路検索」を選び、「接続設定」で AWS リージョンと API キーを入力して「完了」を押します。設定は両方の機能で共通です。
+地図右上の赤いサービスボタン <img src="Arch_Amazon-Location-Service_32.svg" alt="Amazon Location Service" width="24"> をタップすると、その下に「POI検索」（虫眼鏡）と「経路検索」（経路線）の丸いボタンが縦に並びます。サービスボタンをもう一度タップすると、2つのボタンを収納できます。検索ボタンを選ぶと、その検索画面が開き、地図上のボタンは収納されます。初回は検索画面の「接続設定」で AWS リージョンと API キーを入力して「完了」を押します。設定は両方の機能で共通です。
 
-<img src="img/amazon-location-menu.png" alt="Amazon Location Service メニュー内に「POI検索」と「経路検索」が並ぶ" width="215">
+<img src="img/amazon-location-menu.png" alt="サービスボタンの下にPOI検索と経路検索の丸いボタンを展開した状態" width="80">
 
 ### 場所を探して地図に表示する
 

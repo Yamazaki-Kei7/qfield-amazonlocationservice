@@ -32,8 +32,8 @@ for (const mode of ["Transit", "Intermodal"]) {
         assert.ok(!("Waypoints" in body))
         assert.ok(!("OptimizeRoutingFor" in body))
         assert.throws(() => routes.requestBody(stops, mode))
-        assert.equal(routes.routeWkt({ Routes: [{ Legs: legs }] }, 1, mode),
+        assert.equal(routes.routeWkt({ Routes: [{ Legs: legs }] }, body),
             "MULTILINESTRING((139 35,140 36),(140 36,141 37))")
-        assert.throws(() => routes.routeWkt({ Routes: [{ Legs: [] }] }, 1, mode))
+        assert.throws(() => routes.routeWkt({ Routes: [{ Legs: [] }] }, body))
     })
 }

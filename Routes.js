@@ -12,7 +12,7 @@ function supportsWaypoints(mode) {
 }
 
 function stopLimit(mode) {
-    return supportsWaypoints(mode) ? 25 : 2
+    return supportsWaypoints(mode) ? 25 : 2 // CalculateRoutes accepts 23 intermediate waypoints.
 }
 
 function validPosition(p) {
@@ -20,7 +20,7 @@ function validPosition(p) {
         && Number.isFinite(p[1]) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90
 }
 
-function requestBody(stops, mode = "Car") {
+function requestBody(stops, mode) {
     if (stops.length < 2 || stops.length > stopLimit(mode) || !stops.every(s => validPosition(s.position)))
         throw new Error("選択した移動手段で利用できる地点を指定してください。")
     const body = {
@@ -38,10 +38,10 @@ function requestBody(stops, mode = "Car") {
     return body
 }
 
-function routeWkt(response, legCount, mode = "Car") {
+function routeWkt(response, body) {
     const route = response.Routes && response.Routes[0]
     if (!route || !Array.isArray(route.Legs) || !route.Legs.length
-            || (supportsWaypoints(mode) && route.Legs.length !== legCount))
+            || (body.Waypoints && route.Legs.length !== body.Waypoints.length + 1))
         throw new Error("全区間を通る経路が見つかりませんでした。")
     const legs = route.Legs.map(leg => {
         const line = leg.Geometry && leg.Geometry.LineString

@@ -46,7 +46,7 @@ Item {
     readonly property bool reorderable: stops.length > 1
     readonly property string statusText: message || searchHint
     readonly property string searchHint: {
-        if (stops.length > maxStops) return travelMode.label + "は2地点までです。地点を減らすか、移動手段を変更してください。"
+        if (stops.length > maxStops) return travelMode.label + "は" + maxStops + "地点までです。地点を減らすか、移動手段を変更してください。"
         if (stops.length === 0) return "出発地と目的地を、訪問する順に追加してください。"
         if (needsOrigin) return "目的地を選択済みです。出発地を追加してください。"
         if (stops.length === 1) return "目的地をあと1地点追加してください。"
@@ -150,6 +150,7 @@ Item {
         if (stopRows) stopRows.dragIndex = -1
         clearRoute()
     }
+    onTravelModeChanged: clearRoute()
 
     function clearRoute() {
         routeRequest.cancel()
@@ -164,12 +165,11 @@ Item {
     function search() {
         if (pending || searchHint) return
         const body = Routes.requestBody(stops, travelMode.id)
-        const legCount = stops.length - 1
         message = ""
         routeRequest.post("routes", "routes", body, text => {
             try {
                 const data = JSON.parse(text)
-                const geometry = QfGeometryUtils.createGeometryFromWkt(Routes.routeWkt(data, legCount, body.TravelMode))
+                const geometry = QfGeometryUtils.createGeometryFromWkt(Routes.routeWkt(data, body))
                 route.geometryWrapper.crs = wgs84
                 route.geometryWrapper.qgsGeometry = geometry
                 const projected = QfGeometryUtils.reprojectGeometry(geometry, wgs84, canvas.mapSettings.destinationCrs)
@@ -592,7 +592,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1
                                 Layout.minimumHeight: plugin.touchHeight
-                                Layout.preferredHeight: Math.max(plugin.touchHeight, implicitContentHeight + verticalPadding * 2)
+                                Layout.preferredHeight: implicitContentHeight + verticalPadding * 2
                                 horizontalPadding: 4
                                 verticalPadding: 2
                                 spacing: 4
@@ -601,16 +601,11 @@ Item {
                                 icon.width: travelModeGrid.iconSize
                                 icon.height: travelModeGrid.iconSize
                                 icon.color: Material.foreground
-                                display: AbstractButton.TextBesideIcon
                                 checkable: true
                                 autoExclusive: true
                                 checked: plugin.travelMode.id === modelData.id
                                 Accessible.role: Accessible.RadioButton
-                                onClicked: {
-                                    if (plugin.travelMode.id === modelData.id) return
-                                    plugin.travelMode = modelData
-                                    plugin.clearRoute()
-                                }
+                                onClicked: if (plugin.travelMode.id !== modelData.id) plugin.travelMode = modelData
                             }
                         }
                     }

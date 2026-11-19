@@ -232,6 +232,7 @@ Item {
         ToolTip.text: text
         ToolTip.visible: hovered
         ToolTip.delay: serviceButton.ToolTip.delay
+        onClicked: serviceButton.checked = false
     }
 
     SearchToolButton {
@@ -240,10 +241,7 @@ Item {
         iconSource: QfTheme.getThemeVectorIcon("ic_baseline_search_white")
         iconColor: QfTheme.toolButtonColor
         enabled: !plugin.pending
-        onClicked: {
-            serviceButton.checked = false
-            plugin.openPlaces(false)
-        }
+        onClicked: plugin.openPlaces(false)
     }
 
     SearchToolButton {
@@ -251,7 +249,6 @@ Item {
         text: "経路検索"
         iconSource: Qt.resolvedUrl("icon.svg")
         onClicked: {
-            serviceButton.checked = false
             plugin.picking = false
             plugin.preview = null
             panel.open()

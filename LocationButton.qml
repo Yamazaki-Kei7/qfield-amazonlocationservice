@@ -11,6 +11,10 @@ Button {
     readonly property var buttonColors: primary ? Colors.primary : checked ? colors.selected :
                                         destructive ? colors.danger : colors.secondary
 
+    readonly property int iconSize: 18
+    icon.width: iconSize
+    icon.height: iconSize
+    spacing: 4
     Material.roundedScale: Material.SmallScale
     Material.elevation: 0
     Material.foreground: buttonColors.foreground

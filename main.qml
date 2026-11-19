@@ -703,7 +703,6 @@ Item {
                     }
                     GridLayout {
                         id: travelModeGrid
-                        readonly property int iconSize: 18
                         Layout.fillWidth: true
                         columns: width < 250 ? 1 : width < 390 ? 2 : 3
                         columnSpacing: 4
@@ -721,12 +720,8 @@ Item {
                                 leftPadding: horizontalPadding
                                 rightPadding: horizontalPadding
                                 verticalPadding: 2
-                                spacing: 4
                                 text: modelData.label
                                 icon.source: Qt.resolvedUrl("icons/" + modelData.id + ".svg")
-                                icon.width: travelModeGrid.iconSize
-                                icon.height: travelModeGrid.iconSize
-                                icon.color: Material.foreground
                                 checkable: true
                                 autoExclusive: true
                                 checked: plugin.travelMode.id === modelData.id
@@ -773,6 +768,7 @@ Item {
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: plugin.canAddStop
                         text: plugin.needsOrigin ? "Search for origin" : plugin.stops.length > 1 ? "Search for next destination" : "Search for destination"
+                        icon.source: Qt.resolvedUrl("icons/Search.svg")
                         onClicked: plugin.openPlaces(true)
                     }
                     LocationButton {
@@ -780,6 +776,7 @@ Item {
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: !!plugin.currentPosition && plugin.canAddStop
                         text: plugin.needsOrigin || !plugin.stops.length ? "Use current location as origin" : "Add current location"
+                        icon.source: Qt.resolvedUrl("icons/CurrentLocation.svg")
                         leftPadding: 8
                         rightPadding: 8
                         onClicked: plugin.addPosition(plugin.currentPosition, "Current location")
@@ -794,6 +791,7 @@ Item {
                     }
                     LocationButton {
                         text: "Add stops from map"
+                        icon.source: Qt.resolvedUrl("icons/MapPin.svg")
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: plugin.canAddStop
@@ -808,6 +806,7 @@ Item {
                         checkable: true
                         Layout.fillWidth: true
                         text: checked ? "Add from layer ▴" : "Add from layer ▾"
+                        icon.source: Qt.resolvedUrl("icons/Layers.svg")
                     }
                     Label { id: layerLabel; text: "Layer for feature selection"; visible: layerToggle.checked }
                     ComboBox {
@@ -823,6 +822,7 @@ Item {
                     LocationButton {
                         visible: layerToggle.checked
                         text: "Select layer features"
+                        icon.source: Qt.resolvedUrl("icons/SelectFeatures.svg")
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: !!layers.currentValue && !plugin.pending

@@ -171,3 +171,14 @@ function placeResults(response) {
         return { label: label, address: address === label ? "" : address, position: item.Position }
     }).filter(place => place.label)
 }
+
+// QGIS filter for features whose display name contains the text or whose ID it names; blank text lists every feature.
+function featureFilterExpression(text, displayExpression) {
+    const term = text.trim()
+    if (!term) return ""
+    // Quote the input as a QGIS string literal; strpos treats wildcards literally.
+    const needle = "lower('" + term.replace(/\\/g, "\\\\").replace(/'/g, "''") + "')"
+    const name = "coalesce(nullif(to_string((" + (displayExpression || "NULL") + ")), ''), to_string($id))"
+    const idMatch = /^(?:fid\s+)?(-?\d+)$/i.exec(term)
+    return "strpos(lower(" + name + "), " + needle + ") > 0" + (idMatch ? " OR $id = " + idMatch[1] : "")
+}

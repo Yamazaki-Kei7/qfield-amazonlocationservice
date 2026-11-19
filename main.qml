@@ -1104,18 +1104,7 @@ Item {
                 matches.clear()
                 return
             }
-            const term = featureFilter.text.trim()
-            let filter = ""
-            if (term) {
-                // Quote the input as a QGIS string literal; strpos treats wildcards literally.
-                const needle = "lower('" + term.replace(/\\/g, "\\\\").replace(/'/g, "''") + "')"
-                const display = layer.displayExpression || "NULL"
-                const name = "coalesce(nullif(to_string((" + display + ")), ''), to_string($id))"
-                filter = "strpos(lower(" + name + "), " + needle + ") > 0"
-                const idMatch = /^(?:fid\s+)?(-?\d+)$/i.exec(term)
-                if (idMatch) filter += " OR $id = " + idMatch[1]
-            }
-            matches.setFeatures(layer, filter)
+            matches.setFeatures(layer, Routes.featureFilterExpression(featureFilter.text, layer.displayExpression))
             featureList.positionViewAtBeginning()
         }
         onAboutToShow: refreshList()
@@ -1170,14 +1159,18 @@ Item {
                     Layout.fillWidth: true
                     placeholderText: "Filter by name or ID"
                     Accessible.name: placeholderText
-                    onTextChanged: if (features.visible) filterDelay.restart()
+                    onTextEdited: filterDelay.restart()
                     onAccepted: Qt.inputMethod.hide()
                 }
                 LocationButton {
                     text: "Clear"
+                    Layout.minimumHeight: plugin.touchHeight
                     Accessible.name: "Clear feature filter"
                     visible: featureFilter.text.length > 0
-                    onClicked: featureFilter.clear()
+                    onClicked: {
+                        featureFilter.clear()
+                        filterDelay.restart()
+                    }
                 }
             }
             Label {

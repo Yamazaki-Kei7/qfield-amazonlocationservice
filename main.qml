@@ -25,6 +25,7 @@ Item {
     property var preview: null
     property bool needsOrigin: false
     property var stops: []
+    property var travelMode: Routes.travelModes[0]
     readonly property var pending: routeRequest.pending
     property bool picking: false
     property string message: ""
@@ -39,11 +40,13 @@ Item {
     readonly property real overlayBottomMargin: Math.max(window.sceneBottomMargin, canvas.bottomMargin) + gutter
     readonly property string region: regionField.text.trim()
     readonly property string apiKey: keyField.text.trim()
-    readonly property bool atLimit: stops.length >= Routes.maxStops
+    readonly property int maxStops: Routes.stopLimit(travelMode.id)
+    readonly property bool atLimit: stops.length >= maxStops
     readonly property bool canAddStop: !atLimit && !pending
     readonly property bool reorderable: stops.length > 1
     readonly property string statusText: message || searchHint
     readonly property string searchHint: {
+        if (stops.length > maxStops) return travelMode.label + "は" + maxStops + "地点までです。地点を減らすか、移動手段を変更してください。"
         if (stops.length === 0) return "出発地と目的地を、訪問する順に追加してください。"
         if (needsOrigin) return "目的地を選択済みです。出発地を追加してください。"
         if (stops.length === 1) return "目的地をあと1地点追加してください。"
@@ -85,7 +88,7 @@ Item {
     function addPosition(position, label, asDestination = false) {
         if (pending) return
         if (atLimit) {
-            window.displayToast("指定できる地点は" + Routes.maxStops + "件までです。")
+            window.displayToast(travelMode.label + "で指定できる地点は" + maxStops + "件までです。")
             return
         }
         // QML list delegates can supply a QVariantList instead of a JavaScript array.
@@ -145,6 +148,11 @@ Item {
     onStopsChanged: {
         if (!stops.length) needsOrigin = false
         if (stopRows) stopRows.dragIndex = -1
+        clearRoute()
+    }
+    onTravelModeChanged: clearRoute()
+
+    function clearRoute() {
         routeRequest.cancel()
         route.geometryWrapper.clear()
         message = ""
@@ -156,20 +164,19 @@ Item {
 
     function search() {
         if (pending || searchHint) return
-        const body = Routes.requestBody(stops)
-        const legCount = stops.length - 1
+        const body = Routes.requestBody(stops, travelMode.id)
         message = ""
         routeRequest.post("routes", "routes", body, text => {
             try {
                 const data = JSON.parse(text)
-                const geometry = QfGeometryUtils.createGeometryFromWkt(Routes.routeWkt(data, legCount))
+                const geometry = QfGeometryUtils.createGeometryFromWkt(Routes.routeWkt(data, body))
                 route.geometryWrapper.crs = wgs84
                 route.geometryWrapper.qgsGeometry = geometry
                 const projected = QfGeometryUtils.reprojectGeometry(geometry, wgs84, canvas.mapSettings.destinationCrs)
                 iface.setMapExtent(QfGeometryUtils.boundingBox(projected))
                 picking = false
                 panel.close()
-                window.displayToast(stops.length + "地点の経路を表示しました。")
+                window.displayToast(travelMode.label + "で" + stops.length + "地点の経路を表示しました。")
             } catch (error) {
                 message = error.message
             }
@@ -567,9 +574,42 @@ Item {
                     spacing: 4
                     RowLayout {
                         Layout.fillWidth: true
-                        SectionTitle { text: plugin.needsOrigin ? "出発地を選択" : "地点を追加"; Layout.topMargin: 0 }
+                        SectionTitle { text: "移動手段"; Layout.topMargin: 0 }
                         LocationButton { text: "接続設定"; enabled: !plugin.pending; onClicked: settingsPopup.open() }
                     }
+                    GridLayout {
+                        id: travelModeGrid
+                        readonly property int iconSize: 18
+                        Layout.fillWidth: true
+                        columns: width < 280 ? 2 : 3
+                        columnSpacing: 4
+                        rowSpacing: 0
+                        enabled: !plugin.pending
+                        Repeater {
+                            model: Routes.travelModes
+                            delegate: LocationButton {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                Layout.minimumHeight: plugin.touchHeight
+                                Layout.preferredHeight: implicitContentHeight + verticalPadding * 2
+                                horizontalPadding: 4
+                                verticalPadding: 2
+                                spacing: 4
+                                text: modelData.label
+                                icon.source: Qt.resolvedUrl("icons/" + modelData.id + ".svg")
+                                icon.width: travelModeGrid.iconSize
+                                icon.height: travelModeGrid.iconSize
+                                icon.color: Material.foreground
+                                checkable: true
+                                autoExclusive: true
+                                checked: plugin.travelMode.id === modelData.id
+                                Accessible.role: Accessible.RadioButton
+                                onClicked: if (plugin.travelMode.id !== modelData.id) plugin.travelMode = modelData
+                            }
+                        }
+                    }
+                    SectionTitle { text: plugin.needsOrigin ? "出発地を選択" : "地点を追加" }
                     LocationButton {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
@@ -633,7 +673,7 @@ Item {
                     }
                     SectionTitle {
                         Layout.topMargin: 8
-                        text: "訪問順（" + plugin.stops.length + " / " + Routes.maxStops + "）"
+                        text: "訪問順（" + plugin.stops.length + " / " + plugin.maxStops + "）"
                     }
                     Label {
                         visible: plugin.reorderable
@@ -708,7 +748,8 @@ Item {
                     Layout.minimumHeight: 48
                     enabled: !plugin.pending && !plugin.searchHint
                     Accessible.description: plugin.statusText
-                    text: plugin.pending ? "経路を検索中…" : "指定順で最短経路を検索"
+                    text: plugin.pending ? "経路を検索中…" : Routes.supportsWaypoints(plugin.travelMode.id)
+                          ? "指定順で最短経路を検索" : plugin.travelMode.label + "の経路を検索"
                     topInset: 0
                     bottomInset: 0
                     font: QfTheme.strongTitleFont
@@ -829,7 +870,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.margins: plugin.gutter
                 wrapMode: Text.Wrap
-                text: plugin.atLimit ? "地点数が上限に達しました（" + Routes.maxStops + "地点）。"
+                text: plugin.atLimit ? "地点数が上限に達しました（" + plugin.maxStops + "地点）。"
                     : "訪問順に地物をタップ（現在 " + plugin.stops.length + " 地点）"
             }
             Label {

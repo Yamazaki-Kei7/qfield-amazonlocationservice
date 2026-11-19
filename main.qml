@@ -26,7 +26,13 @@ Item {
     property bool needsOrigin: false
     property var stops: []
     property var travelMode: Routes.travelModes[0]
-    readonly property var pending: routeRequest.pending
+    // Optimizing the visit order always keeps the first stop; this keeps the last one too.
+    property bool fixedEnd: false
+    // The order replaced by the last optimization, for as long as it can be restored.
+    property var undoStops: null
+    property string optimizeNote: ""
+    readonly property var pending: routeRequest.pending || optimizeRequest.pending
+    readonly property bool optimizing: !!optimizeRequest.pending
     property bool picking: false
     property string message: ""
     readonly property string handlerName: "AmazonLocationRoutes"
@@ -36,6 +42,7 @@ Item {
     readonly property color ink: "#232f3e"
     readonly property color accent: Colors.foreground(QfTheme.darkTheme)
     readonly property int gutter: 16
+    readonly property int stopMarkerSize: 24
     readonly property int touchHeight: 44
     readonly property real overlayBottomMargin: Math.max(window.sceneBottomMargin, canvas.bottomMargin) + gutter
     readonly property string region: regionField.text.trim()
@@ -44,6 +51,10 @@ Item {
     readonly property bool atLimit: stops.length >= maxStops
     readonly property bool canAddStop: !atLimit && !pending
     readonly property bool reorderable: stops.length > 1
+    readonly property bool optimizable: Routes.supportsWaypoints(travelMode.id)
+        && stops.length >= Routes.minOptimizeStops(false)
+    readonly property bool canOptimize: optimizable && stops.length >= Routes.minOptimizeStops(fixedEnd)
+        && !connectionHint && !pending
     readonly property string statusText: message || searchHint
     readonly property string searchHint: {
         if (stops.length > maxStops) return travelMode.label + "は" + maxStops + "地点までです。地点を減らすか、移動手段を変更してください。"
@@ -81,6 +92,11 @@ Item {
         return [p.x, p.y]
     }
 
+    function toMapCrs(position) {
+        const p = QfGeometryUtils.point(position[0], position[1])
+        return QfGeometryUtils.reprojectPoint(p, wgs84, canvas.mapSettings.destinationCrs)
+    }
+
     function addStop(point, crs, label) {
         addPosition(toWgs84(point, crs), label)
     }
@@ -116,8 +132,7 @@ Item {
 
     function showPlace(place) {
         preview = place
-        const p = QfGeometryUtils.point(place.position[0], place.position[1])
-        canvas.mapSettings.setCenter(QfGeometryUtils.reprojectPoint(p, wgs84, canvas.mapSettings.destinationCrs), true)
+        canvas.mapSettings.setCenter(toMapCrs(place.position), true)
     }
 
     function openPlaces(forRoute) {
@@ -148,18 +163,55 @@ Item {
     onStopsChanged: {
         if (!stops.length) needsOrigin = false
         if (stopRows) stopRows.dragIndex = -1
+        undoStops = null
         clearRoute()
     }
     onTravelModeChanged: clearRoute()
+    onFixedEndChanged: optimizeNote = ""
 
     function clearRoute() {
         routeRequest.cancel()
+        optimizeRequest.cancel()
         route.geometryWrapper.clear()
         message = ""
+        optimizeNote = ""
     }
 
     onMessageChanged: {
         if (picking && message) window.displayToast(message)
+    }
+
+    function fitRouteOnMap(geometry) {
+        const settings = canvas.mapSettings
+        const projected = QfGeometryUtils.reprojectGeometry(geometry, wgs84, settings.destinationCrs)
+        const bounds = QfGeometryUtils.boundingBox(projected)
+        // A selected stop can be outside the route when the service snaps it to a road.
+        for (const stop of stops) {
+            const p = toMapCrs(stop.position)
+            bounds.xMinimum = Math.min(bounds.xMinimum, p.x)
+            bounds.xMaximum = Math.max(bounds.xMaximum, p.x)
+            bounds.yMinimum = Math.min(bounds.yMinimum, p.y)
+            bounds.yMaximum = Math.max(bounds.yMaximum, p.y)
+        }
+
+        // Measure the bounds along the screen axes, including when the map is rotated.
+        const angle = settings.rotation * Math.PI / 180
+        const cos = Math.abs(Math.cos(angle))
+        const sin = Math.abs(Math.sin(angle))
+        const inset = stopMarkerSize / 2 + gutter
+        const unitsPerPoint = Math.max(
+            (bounds.width * cos + bounds.height * sin) / Math.max(1, canvas.width - 2 * inset),
+            (bounds.width * sin + bounds.height * cos) / Math.max(1, canvas.height - 2 * inset))
+        const center = bounds.center
+        if (!unitsPerPoint) {
+            settings.setCenter(QfGeometryUtils.point(center.x, center.y))
+            return
+        }
+        const halfWidth = unitsPerPoint * canvas.width / 2
+        const halfHeight = unitsPerPoint * canvas.height / 2
+        iface.setMapExtent(QfGeometryUtils.createRectangleFromPoints(
+            QfGeometryUtils.point(center.x - halfWidth, center.y - halfHeight),
+            QfGeometryUtils.point(center.x + halfWidth, center.y + halfHeight)))
     }
 
     function search() {
@@ -172,8 +224,7 @@ Item {
                 const geometry = QfGeometryUtils.createGeometryFromWkt(Routes.routeWkt(data, body))
                 route.geometryWrapper.crs = wgs84
                 route.geometryWrapper.qgsGeometry = geometry
-                const projected = QfGeometryUtils.reprojectGeometry(geometry, wgs84, canvas.mapSettings.destinationCrs)
-                iface.setMapExtent(QfGeometryUtils.boundingBox(projected))
+                fitRouteOnMap(geometry)
                 picking = false
                 panel.close()
                 window.displayToast(travelMode.label + "で" + stops.length + "地点の経路を表示しました。")
@@ -183,12 +234,45 @@ Item {
         })
     }
 
+    function optimize() {
+        if (!canOptimize) return
+        const before = stops
+        const fixed = fixedEnd
+        message = ""
+        optimizeRequest.post("routes", "optimize-waypoints", Routes.optimizeBody(before, travelMode.id, fixed), text => {
+            try {
+                const result = Routes.optimizedStops(JSON.parse(text), before, fixed)
+                if (result.changed) {
+                    // Changing the stops clears the undo order and the note, so both are set afterwards.
+                    stops = result.stops
+                    undoStops = before
+                }
+                optimizeNote = (result.changed ? "最適な順に並べ替えました" : "すでに最適な順序です") + result.summary
+            } catch (error) {
+                message = error.message
+            }
+        })
+    }
+
+    function undoOptimize() {
+        if (pending || !undoStops) return
+        stops = undoStops
+    }
+
     LocationRequest {
         id: routeRequest
         region: plugin.region
         apiKey: plugin.apiKey
         onFailed: reason => plugin.message = reason
-        onRejected: status => plugin.message = "検索できませんでした（HTTP " + status + "）。地点、リージョン、キーの権限を確認してください。"
+        onRejected: status => plugin.message = Routes.rejection("検索できませんでした", status)
+    }
+
+    LocationRequest {
+        id: optimizeRequest
+        region: plugin.region
+        apiKey: plugin.apiKey
+        onFailed: reason => plugin.message = reason
+        onRejected: status => plugin.message = Routes.optimizeRejection(status, plugin.stops)
     }
 
     Connections {
@@ -292,7 +376,7 @@ Item {
                     mapPoint: transformPoint.projectedPosition
                 }
                 readonly property bool isPlace: index === plugin.stops.length
-                width: isPlace ? 30 : 24
+                width: isPlace ? 30 : plugin.stopMarkerSize
                 height: width
                 radius: width / 2
                 x: marker.screenPoint.x - width / 2
@@ -555,6 +639,7 @@ Item {
         onAboutToHide: {
             stopRows.dragIndex = -1
             routeRequest.cancel()
+            optimizeRequest.cancel()
         }
         ColumnLayout {
             anchors.fill: parent
@@ -675,6 +760,57 @@ Item {
                         Layout.topMargin: 8
                         text: "訪問順（" + plugin.stops.length + " / " + plugin.maxStops + "）"
                     }
+                    ColumnLayout {
+                        visible: plugin.optimizable
+                        Layout.fillWidth: true
+                        spacing: 4
+                        LocationButton {
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: plugin.touchHeight
+                            enabled: plugin.canOptimize
+                            text: plugin.optimizing ? "最適化中…" : "訪問順を最適化"
+                            onClicked: plugin.optimize()
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                id: fixedEndLabel
+                                Layout.fillWidth: true
+                                text: "最後の地点を目的地として固定"
+                                wrapMode: Text.Wrap
+                            }
+                            Switch {
+                                Layout.minimumHeight: plugin.touchHeight
+                                enabled: !plugin.pending
+                                checked: plugin.fixedEnd
+                                Accessible.name: fixedEndLabel.text
+                                onToggled: plugin.fixedEnd = checked
+                            }
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: !plugin.fixedEnd ? "出発地を固定し、ほかの地点を総距離が最短になる順に並べ替えます。" :
+                                plugin.stops.length < Routes.minOptimizeStops(true)
+                                ? "目的地を固定する場合は、" + Routes.minOptimizeStops(true) + "地点以上で最適化できます。"
+                                : "出発地と目的地を固定し、経由地を総距離が最短になる順に並べ替えます。"
+                            color: QfTheme.secondaryTextColor
+                            font: QfTheme.tipFont
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            visible: text.length > 0
+                            wrapMode: Text.Wrap
+                            text: plugin.optimizeNote
+                        }
+                        LocationButton {
+                            visible: !!plugin.undoStops
+                            enabled: !plugin.pending
+                            text: "元の順序に戻す"
+                            Layout.minimumHeight: plugin.touchHeight
+                            onClicked: plugin.undoOptimize()
+                        }
+                    }
                     Label {
                         visible: plugin.reorderable
                         Layout.fillWidth: true
@@ -734,13 +870,14 @@ Item {
                     Layout.fillWidth: true
                     visible: !!plugin.pending
                     indeterminate: visible
-                    Accessible.name: "経路を検索中"
+                    Accessible.name: plugin.optimizing ? "訪問順を最適化中" : "経路を検索中"
                 }
                 Label {
                     Layout.fillWidth: true
                     visible: text.length > 0
                     wrapMode: Text.Wrap
                     text: plugin.statusText
+                    textFormat: Text.PlainText
                     color: plugin.message ? plugin.accent : QfTheme.mainTextColor
                 }
                 LocationButton {
@@ -748,7 +885,7 @@ Item {
                     Layout.minimumHeight: 48
                     enabled: !plugin.pending && !plugin.searchHint
                     Accessible.description: plugin.statusText
-                    text: plugin.pending ? "経路を検索中…" : Routes.supportsWaypoints(plugin.travelMode.id)
+                    text: routeRequest.pending ? "経路を検索中…" : Routes.supportsWaypoints(plugin.travelMode.id)
                           ? "指定順で最短経路を検索" : plugin.travelMode.label + "の経路を検索"
                     topInset: 0
                     bottomInset: 0

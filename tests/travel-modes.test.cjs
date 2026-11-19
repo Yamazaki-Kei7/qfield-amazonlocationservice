@@ -70,6 +70,19 @@ test("place search preserves multilingual names and addresses", () => {
     ])
 })
 
+test("feature filter matches display names literally and feature IDs exactly", () => {
+    const name = "coalesce(nullif(to_string((\"name\")), ''), to_string($id))"
+    assert.equal(routes.featureFilterExpression("  ", '"name"'), "")
+    assert.equal(routes.featureFilterExpression(" 駅 ", '"name"'), "strpos(lower(" + name + "), lower('駅')) > 0")
+    assert.equal(routes.featureFilterExpression("O'Brien\\%", '"name"'),
+        "strpos(lower(" + name + "), lower('O''Brien\\\\%')) > 0")
+    for (const [term, id] of [["42", "42"], ["FID 42", "42"], ["fid -3", "-3"]])
+        assert.ok(routes.featureFilterExpression(term, '"name"').endsWith(" OR $id = " + id))
+    for (const term of ["FID", "42 Main St"])
+        assert.ok(!routes.featureFilterExpression(term, '"name"').includes(" OR "))
+    assert.match(routes.featureFilterExpression("a", ""), /to_string\(\(NULL\)\)/)
+})
+
 for (const mode of ["Transit", "Intermodal"]) {
     test(mode + " uses two stops and displays every transfer leg", () => {
         const body = routes.requestBody(stops.slice(0, 2), mode)

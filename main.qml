@@ -826,10 +826,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: !!layers.currentValue && !plugin.pending
-                        onClicked: {
-                            matches.setFeatures(layers.currentValue, "")
-                            features.open()
-                        }
+                        onClicked: features.open()
                     }
                     SectionTitle {
                         Layout.topMargin: 8
@@ -1101,7 +1098,26 @@ Item {
             })
             return visits
         }
-        onClosed: matches.clear()
+        function refreshList() {
+            const layer = layers.currentValue
+            if (!layer) {
+                matches.clear()
+                return
+            }
+            matches.setFeatures(layer, Routes.featureFilterExpression(featureFilter.text, layer.displayExpression))
+            featureList.positionViewAtBeginning()
+        }
+        onAboutToShow: refreshList()
+        onAboutToHide: filterDelay.stop()
+        onClosed: {
+            featureFilter.clear()
+            matches.clear()
+        }
+        Timer {
+            id: filterDelay
+            interval: 200
+            onTriggered: features.refreshList()
+        }
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
@@ -1128,16 +1144,43 @@ Item {
                 Layout.fillWidth: true
                 Layout.margins: plugin.gutter
                 Layout.topMargin: 4
+                Layout.bottomMargin: 4
                 wrapMode: Text.Wrap
                 text: plugin.atLimit ? "Stop limit reached (" + plugin.maxStops + ")."
                     : "Tap a feature to add a stop. Tap again to revisit."
             }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: plugin.gutter
+                Layout.rightMargin: plugin.gutter
+                Layout.bottomMargin: 8
+                TextField {
+                    id: featureFilter
+                    Layout.fillWidth: true
+                    placeholderText: "Filter by name or ID"
+                    Accessible.name: placeholderText
+                    onTextEdited: filterDelay.restart()
+                    onAccepted: Qt.inputMethod.hide()
+                }
+                LocationButton {
+                    text: "Clear"
+                    Layout.minimumHeight: plugin.touchHeight
+                    Accessible.name: "Clear feature filter"
+                    visible: featureFilter.text.length > 0
+                    onClicked: {
+                        featureFilter.clear()
+                        filterDelay.restart()
+                    }
+                }
+            }
             Label {
                 Layout.leftMargin: plugin.gutter
                 visible: matches.count === 0
-                text: "There are no features in this layer."
+                text: featureFilter.text.trim() ? "No matching features." : "There are no features in this layer."
             }
             ListView {
+                id: featureList
+                enabled: !filterDelay.running
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.leftMargin: plugin.gutter

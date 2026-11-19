@@ -39,6 +39,7 @@ Item {
     readonly property string region: regionField.text.trim()
     readonly property string apiKey: keyField.text.trim()
     readonly property bool atLimit: stops.length >= Routes.maxStops
+    readonly property bool canAddStop: !atLimit && !pending
     readonly property bool reorderable: stops.length > 1
     readonly property string statusText: message || searchHint
     readonly property string searchHint: {
@@ -122,7 +123,7 @@ Item {
     }
 
     function usePreview() {
-        if (!preview || atLimit || pending) return
+        if (!preview || !canAddStop) return
         const place = preview
         preview = null
         if (!stops.length && currentPosition) addPosition(currentPosition, "現在地")
@@ -243,8 +244,8 @@ Item {
                 onTriggered: plugin.openPlaces(false)
             }
             MenuSeparator {
-                verticalPadding: 0
-                contentItem: Item { implicitHeight: plugin.gutter / 2 }
+                height: plugin.gutter / 2
+                contentItem: null
             }
             SearchMenuItem {
                 text: "経路検索"
@@ -355,7 +356,7 @@ Item {
                     text: plugin.atLimit ? "地点数が上限です" :
                         !plugin.stops.length && plugin.currentPosition ? "現在地からの経路" :
                         plugin.stops.length && !plugin.needsOrigin ? "目的地として追加" : "ここへの経路"
-                    enabled: !plugin.atLimit && !plugin.pending
+                    enabled: plugin.canAddStop
                     Layout.minimumHeight: plugin.touchHeight
                     primary: true
                     onClicked: plugin.usePreview()
@@ -590,14 +591,14 @@ Item {
                     LocationButton {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
-                        enabled: !plugin.atLimit && !plugin.pending
+                        enabled: plugin.canAddStop
                         text: plugin.needsOrigin ? "出発地をPOI検索" : plugin.stops.length > 1 ? "次の目的地をPOI検索" : "目的地をPOI検索"
                         onClicked: plugin.openPlaces(true)
                     }
                     LocationButton {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
-                        enabled: !!plugin.currentPosition && !plugin.atLimit && !plugin.pending
+                        enabled: !!plugin.currentPosition && plugin.canAddStop
                         text: plugin.needsOrigin || !plugin.stops.length ? "現在地を出発地にする" : "現在地を次の地点に追加"
                         onClicked: plugin.addPosition(plugin.currentPosition, "現在地")
                     }
@@ -613,7 +614,7 @@ Item {
                         text: "地図をタップして地点を追加"
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
-                        enabled: !plugin.atLimit && !plugin.pending
+                        enabled: plugin.canAddStop
                         onClicked: {
                             panel.close()
                             plugin.picking = true
@@ -642,7 +643,7 @@ Item {
                         text: "レイヤの地物を選択"
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
-                        enabled: !!layers.currentValue && !plugin.atLimit && !plugin.pending
+                        enabled: !!layers.currentValue && plugin.canAddStop
                         onClicked: {
                             matches.setFeatures(layers.currentValue, "")
                             features.open()
@@ -863,8 +864,7 @@ Item {
                     width: ListView.view.width
                     implicitHeight: Math.max(plugin.touchHeight, implicitContentHeight + topPadding + bottomPadding)
                     enabled: !plugin.atLimit
-                    Material.accent: plugin.accent
-                    Material.foreground: plugin.accent
+                    Material.foreground: Material.accent
                     text: model.featureName || ("FID " + model.featureId)
                     onClicked: plugin.addStop(QfGeometryUtils.centroid(model.geometry), model.crs, text)
                 }

@@ -181,6 +181,7 @@ Item {
     Item {
         parent: plugin.canvas
         anchors.fill: parent
+        z: route.z + 1
         Repeater {
             model: plugin.stops
             delegate: Rectangle {

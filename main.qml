@@ -238,8 +238,7 @@ Item {
     SearchToolButton {
         id: placeButton
         text: "POI検索"
-        iconSource: QfTheme.getThemeVectorIcon("ic_baseline_search_white")
-        iconColor: QfTheme.toolButtonColor
+        iconSource: Qt.resolvedUrl("poi-search.svg")
         enabled: !plugin.pending
         onClicked: plugin.openPlaces(false)
     }

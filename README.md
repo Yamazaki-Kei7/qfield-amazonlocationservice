@@ -45,7 +45,7 @@ URL からインストールできない環境では、[amazon-location-service.
 
 ### 接続設定
 
-地図右上の赤いサービスボタン <img src="Arch_Amazon-Location-Service_32.svg" alt="Amazon Location Service" width="24"> をタップすると、その下に「POI検索」（虫眼鏡）と「経路検索」（経路線）の丸いボタンが縦に並びます。サービスボタンをもう一度タップすると、2つのボタンを収納できます。検索ボタンを選ぶと、その検索画面が開き、地図上のボタンは収納されます。初回は検索画面の「接続設定」で AWS リージョンと API キーを入力して「完了」を押します。設定は両方の機能で共通です。
+地図右上の赤いサービスボタン <img src="Arch_Amazon-Location-Service_32.svg" alt="Amazon Location Service" width="24"> をタップすると、その下に「POI検索」（地図ピン）と「経路検索」（経路線）の丸いボタンが縦に並びます。サービスボタンをもう一度タップすると、2つのボタンを収納できます。検索ボタンを選ぶと、その検索画面が開き、地図上のボタンは収納されます。初回は検索画面の「接続設定」で AWS リージョンと API キーを入力して「完了」を押します。設定は両方の機能で共通です。
 
 <img src="img/amazon-location-menu.png" alt="サービスボタンの下にPOI検索と経路検索の丸いボタンを展開した状態" width="80">
 
@@ -124,7 +124,7 @@ URL からインストールできない環境では、[amazon-location-service.
 配布用の ZIP は、このディレクトリで次のコマンドを実行して作成します。
 
 ```sh
-zip -j amazon-location-service.zip main.qml PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg Arch_Amazon-Location-Service_32.svg LICENSE
+zip -j amazon-location-service.zip main.qml PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg LICENSE
 ```
 
 URL からのインストールでは `main` ブランチの `amazon-location-service.zip` がそのまま配布されます。ソースを変更したら、`metadata.txt` の `version` を更新し、ZIP を作り直してコミットしてください。

@@ -18,14 +18,13 @@ Item {
         if (!gnss || !gnss.active || !gnss.valid || !gnss.currentness) return null
         const fix = gnss.positionInformation
         if (!fix || !fix.isValid || !fix.longitudeValid || !fix.latitudeValid) return null
-        const geo = QfGeometryUtils.reprojectPointToWgs84(gnss.projectedPosition, canvas.mapSettings.destinationCrs)
-        const p = [geo.x, geo.y]
+        const p = toWgs84(gnss.projectedPosition, canvas.mapSettings.destinationCrs)
         return Routes.validPosition(p) ? p : null
     }
     property var preview: null
     property bool needsOrigin: false
     property var stops: []
-    property var pending: null
+    readonly property var pending: routeRequest.pending
     property bool picking: false
     property string message: ""
     readonly property string handlerName: "AmazonLocationRoutes"
@@ -35,6 +34,9 @@ Item {
     readonly property color accent: QfTheme.darkTheme ? "#ff96a7" : "#b52745"
     readonly property int gutter: 16
     readonly property int touchHeight: 44
+    readonly property real overlayBottomMargin: Math.max(window.sceneBottomMargin, canvas.bottomMargin) + gutter
+    readonly property string region: regionField.text.trim()
+    readonly property string apiKey: keyField.text.trim()
     readonly property bool atLimit: stops.length >= Routes.maxStops
     readonly property bool reorderable: stops.length > 1
     readonly property string statusText: message || searchHint
@@ -46,7 +48,7 @@ Item {
     }
     readonly property string connectionHint: {
         if (!regionField.validRegion) return "AWS リージョンを入力してください（例：ap-northeast-1）。"
-        if (!keyField.text.trim()) return "Amazon Location API キーを入力してください。"
+        if (!apiKey) return "Amazon Location API キーを入力してください。"
         return ""
     }
 
@@ -57,7 +59,6 @@ Item {
     }
     Component.onDestruction: {
         if (handler) handler.deregisterHandler(handlerName)
-        cancelRequest()
     }
 
     function pickPoint(screenPoint, device, interaction) {
@@ -68,9 +69,13 @@ Item {
         return true
     }
 
-    function addStop(point, crs, label) {
+    function toWgs84(point, crs) {
         const p = QfGeometryUtils.reprojectPointToWgs84(point, crs)
-        addPosition([p.x, p.y], label)
+        return [p.x, p.y]
+    }
+
+    function addStop(point, crs, label) {
+        addPosition(toWgs84(point, crs), label)
     }
 
     function addPosition(position, label, asDestination = false) {
@@ -99,9 +104,7 @@ Item {
     }
 
     function mapCenter() {
-        const settings = canvas.mapSettings
-        const p = QfGeometryUtils.reprojectPointToWgs84(settings.center, settings.destinationCrs)
-        return [p.x, p.y]
+        return toWgs84(canvas.mapSettings.center, canvas.mapSettings.destinationCrs)
     }
 
     function showPlace(place) {
@@ -127,13 +130,6 @@ Item {
         panel.open()
     }
 
-    function cancelRequest() {
-        const request = pending
-        pending = null
-        timeout.stop()
-        if (request) request.abort()
-    }
-
     function moveStop(from, to) {
         if (pending || from < 0 || from >= stops.length || to < 0 || to >= stops.length || from === to) return
         const reordered = stops.slice()
@@ -145,7 +141,7 @@ Item {
     onStopsChanged: {
         if (!stops.length) needsOrigin = false
         if (stopRows) stopRows.dragIndex = -1
-        cancelRequest()
+        routeRequest.cancel()
         route.geometryWrapper.clear()
         message = ""
     }
@@ -155,25 +151,13 @@ Item {
     }
 
     function search() {
-        const region = regionField.text.trim()
-        const key = keyField.text.trim()
         if (pending || searchHint) return
         const body = Routes.requestBody(stops)
         const legCount = stops.length - 1
-        const request = new XMLHttpRequest()
-        pending = request
         message = ""
-        request.onreadystatechange = function() {
-            if (request.readyState !== XMLHttpRequest.DONE || pending !== request) return
-            pending = null
-            timeout.stop()
-            if (request.status !== 200) {
-                message = request.status === 0 ? "通信できません。接続を確認してください。"
-                    : "検索できませんでした（HTTP " + request.status + "）。地点、リージョン、キーの権限を確認してください。"
-                return
-            }
+        routeRequest.post("routes", "routes", body, text => {
             try {
-                const data = JSON.parse(request.responseText)
+                const data = JSON.parse(text)
                 const geometry = QfGeometryUtils.createGeometryFromWkt(Routes.routeWkt(data, legCount))
                 route.geometryWrapper.crs = wgs84
                 route.geometryWrapper.qgsGeometry = geometry
@@ -185,25 +169,15 @@ Item {
             } catch (error) {
                 message = error.message
             }
-        }
-        try {
-            request.open("POST", "https://routes.geo." + region + ".amazonaws.com/v2/routes?key=" + encodeURIComponent(key))
-            request.setRequestHeader("Content-Type", "application/json")
-            timeout.start()
-            request.send(JSON.stringify(body))
-        } catch (error) {
-            cancelRequest()
-            message = "検索を開始できませんでした。"
-        }
+        })
     }
 
-    Timer {
-        id: timeout
-        interval: 45000
-        onTriggered: {
-            plugin.cancelRequest()
-            plugin.message = "応答がありません。接続を確認して再検索してください。"
-        }
+    LocationRequest {
+        id: routeRequest
+        region: plugin.region
+        apiKey: plugin.apiKey
+        onFailed: reason => plugin.message = reason
+        onRejected: status => plugin.message = "検索できませんでした（HTTP " + status + "）。地点、リージョン、キーの権限を確認してください。"
     }
 
     Connections {
@@ -296,7 +270,7 @@ Item {
         parent: plugin.canvas.parent
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: Math.max(plugin.window.sceneBottomMargin, plugin.canvas.bottomMargin) + plugin.gutter
+        anchors.bottomMargin: plugin.overlayBottomMargin
         width: Math.min(410, parent.width - 2 * plugin.gutter)
         visible: !!plugin.preview
         padding: 12
@@ -322,7 +296,7 @@ Item {
             Label {
                 Layout.fillWidth: true
                 text: plugin.preview ? plugin.preview.address : ""
-                visible: !!plugin.preview && !!text && text !== plugin.preview.label
+                visible: !!text
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
                 color: QfTheme.secondaryTextColor
@@ -356,7 +330,7 @@ Item {
         parent: plugin.canvas.parent
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: Math.max(plugin.window.sceneBottomMargin, plugin.canvas.bottomMargin) + plugin.gutter
+        anchors.bottomMargin: plugin.overlayBottomMargin
         height: Math.max(implicitHeight, plugin.touchHeight)
         visible: plugin.picking && plugin.stops.length >= 2
         enabled: !plugin.pending
@@ -545,7 +519,7 @@ Item {
         id: panel
         onAboutToHide: {
             stopRows.dragIndex = -1
-            plugin.cancelRequest()
+            routeRequest.cancel()
         }
         ColumnLayout {
             anchors.fill: parent
@@ -754,11 +728,12 @@ Item {
                 id: placeSearch
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                region: regionField.text.trim()
-                apiKey: keyField.text.trim()
+                region: plugin.region
+                apiKey: plugin.apiKey
                 connectionHint: plugin.connectionHint
                 searchCenter: plugin.mapCenter
                 accent: plugin.accent
+                ink: plugin.ink
                 gutter: plugin.gutter
                 touchHeight: plugin.touchHeight
                 selectionHint: places.forRoute ? "経路に追加する場所を選択してください。" : "場所を選択すると地図に表示します。"

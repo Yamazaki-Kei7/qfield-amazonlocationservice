@@ -122,7 +122,7 @@ QField のプラグインツールバーには、虫眼鏡の「POI検索」と�
 配布用の ZIP は、このディレクトリで次のコマンドを実行して作成します。
 
 ```sh
-zip -j amazon-location-routes.zip main.qml PlaceSearch.qml Routes.js metadata.txt icon.svg LICENSE
+zip -j amazon-location-routes.zip main.qml PlaceSearch.qml LocationRequest.qml Routes.js metadata.txt icon.svg LICENSE
 ```
 
 URL からのインストールでは `main` ブランチの `amazon-location-routes.zip` がそのまま配布されます。ソースを変更したら、`metadata.txt` の `version` を更新し、ZIP を作り直してコミットしてください。

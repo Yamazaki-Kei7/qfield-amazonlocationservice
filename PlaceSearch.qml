@@ -13,28 +13,30 @@ ColumnLayout {
     required property string connectionHint
     required property var searchCenter
     required property color accent
+    required property color ink
     required property int gutter
     required property int touchHeight
     required property string selectionHint
     signal settingsRequested()
     signal chosen(var place)
 
-    property var pending: null
+    readonly property var pending: request.pending
     property var results: []
     property string feedback: ""
 
     function cancel() {
-        const request = pending
-        pending = null
-        timeout.stop()
-        if (request) request.abort()
+        request.cancel()
+    }
+
+    function clearResults() {
+        cancel()
+        results = []
+        feedback = ""
     }
 
     function reset() {
-        cancel()
+        clearResults()
         query.clear()
-        results = []
-        feedback = ""
     }
 
     function submit() {
@@ -47,43 +49,22 @@ ColumnLayout {
             return
         }
         Qt.inputMethod.hide()
-        const request = new XMLHttpRequest()
-        pending = request
         feedback = ""
-        request.onreadystatechange = function() {
-            if (request.readyState !== XMLHttpRequest.DONE || pending !== request) return
-            pending = null
-            timeout.stop()
-            if (request.status !== 200) {
-                feedback = request.status === 0 ? "通信できません。接続を確認してください。"
-                    : "POIを検索できませんでした（HTTP " + request.status + "）。リージョンとキーの geo-places:SearchText 権限を確認してください。"
-                return
-            }
+        request.post("places", "search-text", { QueryText: term, BiasPosition: center, Language: "ja" }, text => {
             try {
-                results = Routes.placeResults(JSON.parse(request.responseText))
+                results = Routes.placeResults(JSON.parse(text))
                 feedback = results.length ? results.length + "件 · " + selectionHint : "該当する場所がありません。施設名や地域名を変えて検索してください。"
             } catch (error) {
                 feedback = "検索結果を読み取れませんでした。もう一度検索してください。"
             }
-        }
-        try {
-            request.open("POST", "https://places.geo." + region + ".amazonaws.com/v2/search-text?key=" + encodeURIComponent(apiKey))
-            request.setRequestHeader("Content-Type", "application/json")
-            timeout.start()
-            request.send(JSON.stringify({ QueryText: term, BiasPosition: center, Language: "ja" }))
-        } catch (error) {
-            cancel()
-            feedback = "検索を開始できませんでした。"
-        }
+        })
     }
-    Component.onDestruction: cancel()
-    Timer {
-        id: timeout
-        interval: 45000
-        onTriggered: {
-            search.cancel()
-            search.feedback = "応答がありません。接続を確認して再検索してください。"
-        }
+    LocationRequest {
+        id: request
+        region: search.region
+        apiKey: search.apiKey
+        onFailed: reason => search.feedback = reason
+        onRejected: status => search.feedback = "POIを検索できませんでした（HTTP " + status + "）。リージョンとキーの geo-places:SearchText 権限を確認してください。"
     }
 
     spacing: 0
@@ -105,18 +86,14 @@ ColumnLayout {
                 Accessible.name: "施設名・住所"
                 maximumLength: 200
                 onAccepted: search.submit()
-                onTextEdited: {
-                    search.cancel()
-                    search.results = []
-                    search.feedback = ""
-                }
+                onTextEdited: search.clearResults()
             }
             Button {
                 text: "検索"
                 Layout.minimumHeight: search.touchHeight
                 enabled: !!query.text.trim() && !search.pending && !search.connectionHint
                 Material.background: enabled ? search.accent : QfTheme.controlBackgroundDisabledColor
-                Material.foreground: QfTheme.darkTheme ? "#232f3e" : "white"
+                Material.foreground: QfTheme.darkTheme ? search.ink : "white"
                 onClicked: search.submit()
             }
         }
@@ -166,7 +143,7 @@ ColumnLayout {
                     }
                     Label {
                         Layout.fillWidth: true
-                        visible: !!text && text !== modelData.label
+                        visible: !!text
                         text: modelData.address
                         textFormat: Text.PlainText
                         wrapMode: Text.Wrap

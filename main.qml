@@ -13,6 +13,17 @@ Item {
     readonly property var canvas: iface.mapCanvas()
     readonly property var handler: iface.findItemByObjectName("pointHandler")
     readonly property var wgs84: QfCoordinateReferenceSystemUtils.wgs84Crs()
+    readonly property var gnss: iface.findItemByObjectName("positionSource")
+    readonly property var currentPosition: {
+        if (!gnss || !gnss.active || !gnss.valid || !gnss.currentness) return null
+        const fix = gnss.positionInformation
+        if (!fix || !fix.isValid || !fix.longitudeValid || !fix.latitudeValid) return null
+        const geo = QfGeometryUtils.reprojectPointToWgs84(gnss.projectedPosition, canvas.mapSettings.destinationCrs)
+        const p = [geo.x, geo.y]
+        return Routes.validPosition(p) ? p : null
+    }
+    property var preview: null
+    property bool needsOrigin: false
     property var stops: []
     property var pending: null
     property bool picking: false
@@ -29,7 +40,11 @@ Item {
     readonly property string statusText: message || searchHint
     readonly property string searchHint: {
         if (stops.length === 0) return "出発地と目的地を、訪問する順に追加してください。"
+        if (needsOrigin) return "目的地を選択済みです。出発地を追加してください。"
         if (stops.length === 1) return "目的地をあと1地点追加してください。"
+        return connectionHint
+    }
+    readonly property string connectionHint: {
         if (!regionField.validRegion) return "AWS リージョンを入力してください（例：ap-northeast-1）。"
         if (!keyField.text.trim()) return "Amazon Location API キーを入力してください。"
         return ""
@@ -37,6 +52,7 @@ Item {
 
     Component.onCompleted: {
         iface.addItemToPluginsToolbar(toolButton)
+        iface.addItemToPluginsToolbar(placeButton)
         handler.registerHandler(handlerName, pickPoint, QfMapCanvasPointHandler.Priority.High)
     }
     Component.onDestruction: {
@@ -53,17 +69,62 @@ Item {
     }
 
     function addStop(point, crs, label) {
+        const p = QfGeometryUtils.reprojectPointToWgs84(point, crs)
+        addPosition([p.x, p.y], label)
+    }
+
+    function addPosition(position, label, asDestination = false) {
+        if (pending) return
         if (atLimit) {
             window.displayToast("指定できる地点は" + Routes.maxStops + "件までです。")
             return
         }
-        const p = QfGeometryUtils.reprojectPointToWgs84(point, crs)
-        if (!Routes.validPosition([p.x, p.y])) {
+        // QML list delegates can supply a QVariantList instead of a JavaScript array.
+        const coordinates = position && [position[0], position[1]]
+        if (!Routes.validPosition(coordinates)) {
             window.displayToast("地点の座標を取得できませんでした。")
             return
         }
-        stops = stops.concat([{ position: [p.x, p.y], label: label }])
-        window.displayToast(stops.length + "番目に追加 · " + label)
+        const stop = { position: coordinates, label: label }
+        if (asDestination && (!stops.length || needsOrigin)) {
+            needsOrigin = true
+            stops = [stop]
+        } else if (needsOrigin) {
+            needsOrigin = false
+            stops = [stop].concat(stops)
+        } else {
+            stops = stops.concat([stop])
+        }
+        window.displayToast(label + "を経路に追加しました。")
+    }
+
+    function mapCenter() {
+        const settings = canvas.mapSettings
+        const p = QfGeometryUtils.reprojectPointToWgs84(settings.center, settings.destinationCrs)
+        return [p.x, p.y]
+    }
+
+    function showPlace(place) {
+        preview = place
+        const p = QfGeometryUtils.point(place.position[0], place.position[1])
+        canvas.mapSettings.setCenter(QfGeometryUtils.reprojectPoint(p, wgs84, canvas.mapSettings.destinationCrs), true)
+    }
+
+    function openPlaces(forRoute) {
+        picking = false
+        preview = null
+        places.forRoute = forRoute
+        placeSearch.reset()
+        places.open()
+    }
+
+    function usePreview() {
+        if (!preview || atLimit || pending) return
+        const place = preview
+        preview = null
+        if (!stops.length && currentPosition) addPosition(currentPosition, "現在地")
+        addPosition(place.position, place.label, true)
+        panel.open()
     }
 
     function cancelRequest() {
@@ -82,6 +143,7 @@ Item {
     }
 
     onStopsChanged: {
+        if (!stops.length) needsOrigin = false
         if (stopRows) stopRows.dragIndex = -1
         cancelRequest()
         route.geometryWrapper.clear()
@@ -148,6 +210,9 @@ Item {
         target: iface
         function onLoadProjectTriggered() {
             plugin.picking = false
+            settingsPopup.close()
+            places.close()
+            plugin.preview = null
             features.close()
             panel.close()
             matches.clear()
@@ -165,8 +230,23 @@ Item {
         Accessible.name: plugin.picking ? "地点の追加を終了して経路検索に戻る" : "Amazon Location 経路検索"
         onClicked: {
             plugin.picking = false
+            plugin.preview = null
             panel.open()
         }
+    }
+
+    QfToolButton {
+        id: placeButton
+        enabled: !plugin.pending
+        round: true
+        bgcolor: plugin.ink
+        iconSource: QfTheme.getThemeVectorIcon("ic_baseline_search_white")
+        iconColor: "white"
+        Accessible.name: "Amazon Location POI検索"
+        ToolTip.text: "POI検索"
+        ToolTip.visible: hovered || pressed
+        ToolTip.delay: 600
+        onClicked: plugin.openPlaces(false)
     }
 
     QfGeometryRenderer {
@@ -183,7 +263,7 @@ Item {
         anchors.fill: parent
         z: route.z + 1
         Repeater {
-            model: plugin.stops
+            model: plugin.preview ? plugin.stops.concat([plugin.preview]) : plugin.stops
             delegate: Rectangle {
                 required property var modelData
                 required property int index
@@ -199,14 +279,73 @@ Item {
                     mapSettings: plugin.canvas.mapSettings
                     mapPoint: transformPoint.projectedPosition
                 }
-                width: 24
+                readonly property bool isPlace: index === plugin.stops.length
+                width: isPlace ? 30 : 24
                 height: width
                 radius: width / 2
                 x: marker.screenPoint.x - width / 2
                 y: marker.screenPoint.y - height / 2
-                color: plugin.ink
+                color: isPlace ? plugin.accent : plugin.ink
                 border.color: "white"
-                Text { anchors.centerIn: parent; text: index + 1; color: "white" }
+                Text { anchors.centerIn: parent; text: isPlace ? "●" : index + 1; color: "white" }
+            }
+        }
+    }
+
+    Pane {
+        parent: plugin.canvas.parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Math.max(plugin.window.sceneBottomMargin, plugin.canvas.bottomMargin) + plugin.gutter
+        width: Math.min(410, parent.width - 2 * plugin.gutter)
+        visible: !!plugin.preview
+        padding: 12
+        background: Rectangle { radius: 8; color: QfTheme.groupBoxSurfaceColor; border.color: QfTheme.controlBorderColor }
+        contentItem: ColumnLayout {
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    Layout.fillWidth: true
+                    text: plugin.preview ? plugin.preview.label : ""
+                    textFormat: Text.PlainText
+                    font: QfTheme.strongResultFont
+                    wrapMode: Text.Wrap
+                }
+                ToolButton {
+                    text: "×"
+                    Accessible.name: "場所の表示を閉じる"
+                    Layout.minimumWidth: plugin.touchHeight
+                    Layout.minimumHeight: plugin.touchHeight
+                    onClicked: plugin.preview = null
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                text: plugin.preview ? plugin.preview.address : ""
+                visible: !!plugin.preview && !!text && text !== plugin.preview.label
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+                color: QfTheme.secondaryTextColor
+            }
+            RowLayout {
+                Button {
+                    text: plugin.atLimit ? "地点数が上限です" :
+                        !plugin.stops.length && plugin.currentPosition ? "現在地からの経路" :
+                        plugin.stops.length && !plugin.needsOrigin ? "目的地として追加" : "ここへの経路"
+                    enabled: !plugin.atLimit && !plugin.pending
+                    Layout.minimumHeight: plugin.touchHeight
+                    Material.background: plugin.orange
+                    Material.foreground: plugin.ink
+                    onClicked: plugin.usePreview()
+                }
+                Button {
+                    flat: true
+                    text: "候補に戻る"
+                    onClicked: {
+                        plugin.preview = null
+                        places.open()
+                    }
+                }
             }
         }
     }
@@ -229,6 +368,7 @@ Item {
             if (plugin.searchHint) {
                 plugin.picking = false
                 panel.open()
+                settingsPopup.open()
             } else {
                 plugin.search()
             }
@@ -307,7 +447,7 @@ Item {
         id: card
         required property int index
         readonly property var stop: plugin.stops[index]
-        readonly property string roleLabel: index === 0 ? "出発地" :
+        readonly property string roleLabel: plugin.needsOrigin ? "目的地" : index === 0 ? "出発地" :
             index === plugin.stops.length - 1 ? "目的地" : "経由地"
         Layout.fillWidth: true
         Layout.minimumWidth: 0
@@ -423,7 +563,33 @@ Item {
                 ColumnLayout {
                     width: form.availableWidth
                     spacing: 4
-                    SectionTitle { text: "地点を追加" }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        SectionTitle { text: plugin.needsOrigin ? "出発地を選択" : "地点を追加"; Layout.topMargin: 0 }
+                        Button { flat: true; text: "接続設定"; enabled: !plugin.pending; onClicked: settingsPopup.open() }
+                    }
+                    Button {
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: plugin.touchHeight
+                        enabled: !plugin.atLimit && !plugin.pending
+                        text: plugin.needsOrigin ? "出発地をPOI検索" : plugin.stops.length > 1 ? "次の目的地をPOI検索" : "目的地をPOI検索"
+                        onClicked: plugin.openPlaces(true)
+                    }
+                    Button {
+                        Layout.fillWidth: true
+                        Layout.minimumHeight: plugin.touchHeight
+                        enabled: !!plugin.currentPosition && !plugin.atLimit && !plugin.pending
+                        text: plugin.needsOrigin || !plugin.stops.length ? "現在地を出発地にする" : "現在地を次の地点に追加"
+                        onClicked: plugin.addPosition(plugin.currentPosition, "現在地")
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        visible: !plugin.currentPosition
+                        wrapMode: Text.Wrap
+                        text: plugin.gnss && plugin.gnss.active ? "現在地の測位を待っています。" : "現在地を使うにはQFieldの測位をオンにしてください。"
+                        color: QfTheme.secondaryTextColor
+                        font: QfTheme.tipFont
+                    }
                     Button {
                         text: "地図をタップして地点を追加"
                         Layout.fillWidth: true
@@ -435,9 +601,17 @@ Item {
                             plugin.window.displayToast("訪問順に地図をタップしてください。2地点以上で地図から経路を検索できます。")
                         }
                     }
-                    Label { id: layerLabel; text: "地物を選ぶレイヤ" }
+                    Button {
+                        id: layerToggle
+                        flat: true
+                        checkable: true
+                        Layout.fillWidth: true
+                        text: checked ? "レイヤから追加 ▴" : "レイヤから追加 ▾"
+                    }
+                    Label { id: layerLabel; text: "地物を選ぶレイヤ"; visible: layerToggle.checked }
                     ComboBox {
                         id: layers
+                        visible: layerToggle.checked
                         Layout.fillWidth: true
                         Accessible.name: layerLabel.text
                         model: QfMapLayerModel { project: qgisProject; filters: Qgis.LayerFilters.HasGeometry }
@@ -446,6 +620,7 @@ Item {
                         displayText: count ? currentText : "対象のレイヤがありません"
                     }
                     Button {
+                        visible: layerToggle.checked
                         text: "レイヤの地物を選択"
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
@@ -454,27 +629,6 @@ Item {
                             matches.setFeatures(layers.currentValue, "")
                             features.open()
                         }
-                    }
-                    SectionTitle { text: "接続設定" }
-                    Label { id: regionLabel; text: "AWS リージョン" }
-                    TextField {
-                        id: regionField
-                        Layout.fillWidth: true
-                        Accessible.name: regionLabel.text
-                        text: "ap-northeast-1"
-                        readOnly: !!plugin.pending
-                        readonly property bool validRegion: /^[a-z]{2}(-[a-z0-9]+)+-[0-9]+$/.test(text.trim())
-                        onTextEdited: plugin.message = ""
-                    }
-                    Label { id: keyLabel; text: "Amazon Location API キー" }
-                    TextField {
-                        id: keyField
-                        Layout.fillWidth: true
-                        Layout.bottomMargin: 12
-                        Accessible.name: keyLabel.text
-                        echoMode: TextInput.Password
-                        readOnly: !!plugin.pending
-                        onTextEdited: plugin.message = ""
                     }
                     SectionTitle {
                         Layout.topMargin: 8
@@ -581,6 +735,87 @@ Item {
             const step = edge / 5
             view.contentY = Math.max(view.originY, Math.min(view.contentY + (up ? -step : step),
                 view.originY + view.contentHeight - view.height))
+        }
+    }
+
+    RoutePopup {
+        id: places
+        property bool forRoute: false
+        onAboutToHide: placeSearch.cancel()
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
+            PanelHeader {
+                title: places.forRoute ? (plugin.needsOrigin ? "出発地を検索" : "目的地を検索") : "POI検索"
+                dismissText: places.forRoute ? "戻る" : "閉じる"
+                onDismissed: places.close()
+            }
+            PlaceSearch {
+                id: placeSearch
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                region: regionField.text.trim()
+                apiKey: keyField.text.trim()
+                connectionHint: plugin.connectionHint
+                searchCenter: plugin.mapCenter
+                accent: plugin.accent
+                gutter: plugin.gutter
+                touchHeight: plugin.touchHeight
+                selectionHint: places.forRoute ? "経路に追加する場所を選択してください。" : "場所を選択すると地図に表示します。"
+                onSettingsRequested: settingsPopup.open()
+                onChosen: place => {
+                    places.close()
+                    if (places.forRoute) plugin.addPosition(place.position, place.label, !plugin.needsOrigin)
+                    else plugin.showPlace(place)
+                }
+            }
+        }
+    }
+
+    RoutePopup {
+        id: settingsPopup
+        height: Math.min(340, parent.height - 16)
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
+            PanelHeader { title: "接続設定"; dismissText: "完了"; onDismissed: settingsPopup.close() }
+            ScrollView {
+                id: settingsForm
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                padding: plugin.gutter
+                contentWidth: availableWidth
+                ColumnLayout {
+                    width: settingsForm.availableWidth
+                    Label { id: regionLabel; text: "AWS リージョン" }
+                    TextField {
+                        id: regionField
+                        Layout.fillWidth: true
+                        Accessible.name: regionLabel.text
+                        text: "ap-northeast-1"
+                        readOnly: !!plugin.pending
+                        readonly property bool validRegion: /^[a-z]{2}(-[a-z0-9]+)+-[0-9]+$/.test(text.trim())
+                        onTextEdited: plugin.message = ""
+                    }
+                    Label { id: keyLabel; text: "Amazon Location API キー" }
+                    TextField {
+                        id: keyField
+                        Layout.fillWidth: true
+                        Layout.bottomMargin: 12
+                        Accessible.name: keyLabel.text
+                        echoMode: TextInput.Password
+                        readOnly: !!plugin.pending
+                        onTextEdited: plugin.message = ""
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        text: plugin.connectionHint || "POI検索と経路検索で共通の設定です。"
+                        color: QfTheme.secondaryTextColor
+                    }
+                }
+            }
         }
     }
 

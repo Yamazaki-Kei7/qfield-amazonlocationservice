@@ -1,6 +1,6 @@
 [general]
 name=Amazon Location Routes
 author=Yamazaki-Kei7
-description=Display shortest driving routes through map locations or selected features in visit order
+description=Search places and plan driving routes from your current location, POIs, map points, or layer features
 icon=icon.svg
-version=1.4.1
+version=1.5.0

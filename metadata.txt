@@ -3,4 +3,4 @@ name=Amazon Location Service
 author=Yamazaki-Kei7
 description=Search for places and addresses, plan routes across six travel modes, and optimize the order of stops with Amazon Location Service
 icon=Arch_Amazon-Location-Service_32.svg
-version=1.12.0
+version=1.13.0

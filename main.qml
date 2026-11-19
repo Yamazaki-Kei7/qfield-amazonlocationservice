@@ -25,6 +25,8 @@ Item {
     readonly property int gutter: 16
     readonly property int touchHeight: 44
     readonly property bool atLimit: stops.length >= Routes.maxStops
+    readonly property bool reorderable: stops.length > 1
+    readonly property string statusText: message || searchHint
     readonly property string searchHint: {
         if (stops.length === 0) return "出発地と目的地を、訪問する順に追加してください。"
         if (stops.length === 1) return "目的地をあと1地点追加してください。"
@@ -252,10 +254,19 @@ Item {
 
     component SectionTitle: Label {
         Layout.fillWidth: true
+        Layout.topMargin: 12
         font: QfTheme.strongResultFont
     }
 
     component MoveButton: ToolButton {
+        required property int stopIndex
+        required property int step
+        readonly property int target: stopIndex + step
+        text: step < 0 ? "↑" : "↓"
+        visible: plugin.reorderable
+        enabled: !plugin.pending && target >= 0 && target < plugin.stops.length
+        Accessible.name: (stopIndex + 1) + "番目の地点を1つ" + (step < 0 ? "上" : "下") + "へ"
+        onClicked: plugin.moveStop(stopIndex, target)
         Layout.preferredWidth: plugin.touchHeight
         Layout.minimumHeight: plugin.touchHeight
         ToolTip.visible: hovered || pressed
@@ -284,9 +295,32 @@ Item {
         }
         contentItem: RowLayout {
             spacing: 6
-            Item {
+            MouseArea {
                 Layout.preferredWidth: plugin.touchHeight
                 Layout.preferredHeight: Math.max(plugin.touchHeight, gripLabels.implicitHeight)
+                enabled: plugin.reorderable && !plugin.pending
+                preventStealing: true
+                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                onPressed: mouse => {
+                    form.contentItem.cancelFlick()
+                    stopRows.pressY = mapToItem(form, mouse.x, mouse.y).y
+                    stopRows.pointerY = stopRows.pressY
+                    stopRows.startScroll = form.contentItem.contentY
+                }
+                onPositionChanged: mouse => {
+                    if (!pressed) return
+                    stopRows.pointerY = mapToItem(form, mouse.x, mouse.y).y
+                    if (!card.held && Math.abs(stopRows.pointerY - stopRows.pressY) >= Qt.styleHints.startDragDistance)
+                        stopRows.dragIndex = card.index
+                }
+                onReleased: mouse => {
+                    if (!card.held) return
+                    stopRows.pointerY = mapToItem(form, mouse.x, mouse.y).y
+                    const target = stopRows.targetIndex
+                    stopRows.dragIndex = -1
+                    plugin.moveStop(card.index, target)
+                }
+                onCanceled: if (card.held) stopRows.dragIndex = -1
                 ColumnLayout {
                     id: gripLabels
                     anchors.centerIn: parent
@@ -303,39 +337,12 @@ Item {
                         background: Rectangle { radius: height / 2; color: plugin.ink }
                     }
                     Label {
-                        visible: plugin.stops.length > 1
+                        visible: plugin.reorderable
                         Layout.alignment: Qt.AlignHCenter
                         text: "⠿"
                         color: QfTheme.secondaryTextColor
                         Accessible.ignored: true
                     }
-                }
-                MouseArea {
-                    id: grip
-                    anchors.fill: parent
-                    enabled: plugin.stops.length > 1 && !plugin.pending
-                    preventStealing: true
-                    cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                    onPressed: mouse => {
-                        form.contentItem.cancelFlick()
-                        stopRows.pressY = mapToItem(form, mouse.x, mouse.y).y
-                        stopRows.pointerY = stopRows.pressY
-                        stopRows.startScroll = form.contentItem.contentY
-                    }
-                    onPositionChanged: mouse => {
-                        if (!pressed) return
-                        stopRows.pointerY = mapToItem(form, mouse.x, mouse.y).y
-                        if (!card.held && Math.abs(stopRows.pointerY - stopRows.pressY) >= Qt.styleHints.startDragDistance)
-                            stopRows.dragIndex = card.index
-                    }
-                    onReleased: mouse => {
-                        if (!card.held) return
-                        stopRows.pointerY = mapToItem(form, mouse.x, mouse.y).y
-                        const target = stopRows.targetIndex
-                        stopRows.dragIndex = -1
-                        plugin.moveStop(card.index, target)
-                    }
-                    onCanceled: if (card.held) stopRows.dragIndex = -1
                 }
             }
             ColumnLayout {
@@ -360,20 +367,8 @@ Item {
                     font: QfTheme.tipFont
                 }
             }
-            MoveButton {
-                text: "↑"
-                visible: plugin.stops.length > 1
-                enabled: !plugin.pending && card.index > 0
-                Accessible.name: (card.index + 1) + "番目の地点を1つ上へ"
-                onClicked: plugin.moveStop(card.index, card.index - 1)
-            }
-            MoveButton {
-                text: "↓"
-                visible: plugin.stops.length > 1
-                enabled: !plugin.pending && card.index < plugin.stops.length - 1
-                Accessible.name: (card.index + 1) + "番目の地点を1つ下へ"
-                onClicked: plugin.moveStop(card.index, card.index + 1)
-            }
+            MoveButton { stopIndex: card.index; step: -1 }
+            MoveButton { stopIndex: card.index; step: 1 }
         }
     }
 
@@ -381,7 +376,7 @@ Item {
         id: panel
         onAboutToHide: {
             stopRows.dragIndex = -1
-            if (plugin.pending) plugin.cancelRequest()
+            plugin.cancelRequest()
         }
         ColumnLayout {
             anchors.fill: parent
@@ -399,7 +394,7 @@ Item {
                 ColumnLayout {
                     width: form.availableWidth
                     spacing: 4
-                    SectionTitle { text: "地点を追加"; Layout.topMargin: 12 }
+                    SectionTitle { text: "地点を追加" }
                     Button {
                         text: "地図をタップして地点を追加"
                         Layout.fillWidth: true
@@ -431,7 +426,7 @@ Item {
                             features.open()
                         }
                     }
-                    SectionTitle { text: "接続設定"; Layout.topMargin: 12 }
+                    SectionTitle { text: "接続設定" }
                     Label { id: regionLabel; text: "AWS リージョン" }
                     TextField {
                         id: regionField
@@ -457,7 +452,7 @@ Item {
                         text: "訪問順（" + plugin.stops.length + " / " + Routes.maxStops + "）"
                     }
                     Label {
-                        visible: plugin.stops.length > 1
+                        visible: plugin.reorderable
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
                         text: "左の番号を上下にドラッグして並べ替え"
@@ -521,15 +516,14 @@ Item {
                     Layout.fillWidth: true
                     visible: text.length > 0
                     wrapMode: Text.Wrap
-                    text: plugin.message || plugin.searchHint
+                    text: plugin.statusText
                     color: plugin.message ? plugin.accent : QfTheme.mainTextColor
                 }
                 Button {
-                    id: searchButton
                     Layout.fillWidth: true
                     Layout.minimumHeight: 48
                     enabled: !plugin.pending && !plugin.searchHint
-                    Accessible.description: plugin.message || plugin.searchHint
+                    Accessible.description: plugin.statusText
                     text: plugin.pending ? "経路を検索中…" : "指定順で最短経路を検索"
                     topInset: 0
                     bottomInset: 0

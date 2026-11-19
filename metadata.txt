@@ -3,4 +3,4 @@ name=Amazon Location Routes
 author=Yamazaki-Kei7
 description=Search places and plan driving routes from your current location, POIs, map points, or layer features
 icon=icon.svg
-version=1.5.0
+version=1.6.0

@@ -6,6 +6,7 @@ import org.qgis
 import org.qfield.core
 import org.qfield.gui
 import "Routes.js" as Routes
+import "ButtonColors.js" as Colors
 
 Item {
     id: plugin
@@ -28,10 +29,10 @@ Item {
     property bool picking: false
     property string message: ""
     readonly property string handlerName: "AmazonLocationRoutes"
+    readonly property string serviceName: "Amazon Location Service"
 
     readonly property color ink: "#232f3e"
-    readonly property color orange: "#ff9900"
-    readonly property color accent: QfTheme.darkTheme ? "#ff96a7" : "#b52745"
+    readonly property color accent: Colors.foreground(QfTheme.darkTheme)
     readonly property int gutter: 16
     readonly property int touchHeight: 44
     readonly property real overlayBottomMargin: Math.max(window.sceneBottomMargin, canvas.bottomMargin) + gutter
@@ -53,8 +54,7 @@ Item {
     }
 
     Component.onCompleted: {
-        iface.addItemToPluginsToolbar(toolButton)
-        iface.addItemToPluginsToolbar(placeButton)
+        iface.addItemToPluginsToolbar(serviceButton)
         handler.registerHandler(handlerName, pickPoint, QfMapCanvasPointHandler.Priority.High)
     }
     Component.onDestruction: {
@@ -184,6 +184,7 @@ Item {
         target: iface
         function onLoadProjectTriggered() {
             plugin.picking = false
+            serviceMenu.close()
             settingsPopup.close()
             places.close()
             plugin.preview = null
@@ -195,32 +196,76 @@ Item {
     }
 
     QfToolButton {
-        id: toolButton
+        id: serviceButton
+        readonly property int iconSize: Math.round(width * 0.7)
         round: true
-        bgcolor: plugin.ink
-        iconSource: Qt.resolvedUrl("icon.svg")
+        bgcolor: "#dd344c"
+        padding: 0
+        iconSource: Qt.resolvedUrl("Arch_Amazon-Location-Service_32.svg")
         iconColor: "transparent"
-        bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : ""
-        Accessible.name: plugin.picking ? "地点の追加を終了して経路検索に戻る" : "Amazon Location 経路検索"
-        onClicked: {
-            plugin.picking = false
-            plugin.preview = null
-            panel.open()
+        icon.width: serviceButton.iconSize
+        icon.height: serviceButton.iconSize
+        bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : (serviceMenu.visible ? "▴" : "▾")
+        bottomRightIndicatorBgColor: Colors.surface(QfTheme.darkTheme)
+        bottomRightIndicatorFgColor: plugin.accent
+        statusBadge.bottomMargin: 0
+        statusBadge.rightMargin: 0
+        Accessible.name: plugin.serviceName
+        Accessible.description: serviceMenu.visible ? "検索メニューを閉じる" : "検索メニューを開く"
+        ToolTip.text: plugin.serviceName
+        ToolTip.visible: hovered && !serviceMenu.visible
+        ToolTip.delay: 600
+        onClicked: serviceMenu.visible = !serviceMenu.visible
+
+        Menu {
+            id: serviceMenu
+            width: Math.min(plugin.window.contentItem.width - 2 * plugin.gutter,
+                            Math.max(implicitWidth, menuHeading.implicitWidth + leftPadding + rightPadding))
+            x: serviceButton.width - width
+            y: serviceButton.height
+            padding: 6
+            spacing: 4
+            modal: false
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+
+            Label {
+                id: menuHeading
+                text: plugin.serviceName
+                font: QfTheme.strongResultFont
+                leftPadding: plugin.gutter
+                rightPadding: plugin.gutter
+                verticalAlignment: Text.AlignVCenter
+                height: Math.max(implicitHeight, plugin.touchHeight)
+            }
+            SearchMenuItem {
+                text: "POI検索"
+                icon.source: QfTheme.getThemeVectorIcon("ic_baseline_search_white")
+                enabled: !plugin.pending
+                onTriggered: plugin.openPlaces(false)
+            }
+            SearchMenuItem {
+                text: "経路検索"
+                icon.source: Qt.resolvedUrl("icon.svg")
+                icon.color: "transparent"
+                onTriggered: {
+                    plugin.picking = false
+                    plugin.preview = null
+                    panel.open()
+                }
+            }
         }
     }
 
-    QfToolButton {
-        id: placeButton
-        enabled: !plugin.pending
-        round: true
-        bgcolor: plugin.ink
-        iconSource: QfTheme.getThemeVectorIcon("ic_baseline_search_white")
-        iconColor: "white"
-        Accessible.name: "Amazon Location POI検索"
-        ToolTip.text: "POI検索"
-        ToolTip.visible: hovered || pressed
-        ToolTip.delay: 600
-        onClicked: plugin.openPlaces(false)
+    component SearchMenuItem: MenuItem {
+        id: entry
+        height: Math.max(implicitHeight, plugin.touchHeight)
+        Material.foreground: plugin.accent
+        background: Rectangle {
+            radius: 8
+            color: Colors.surface(QfTheme.darkTheme)
+            opacity: entry.enabled ? 1 : 0.4
+            border.color: entry.down || entry.highlighted || entry.hovered ? plugin.accent : "transparent"
+        }
     }
 
     QfGeometryRenderer {
@@ -285,8 +330,9 @@ Item {
                     font: QfTheme.strongResultFont
                     wrapMode: Text.Wrap
                 }
-                ToolButton {
+                LocationButton {
                     text: "×"
+                    horizontalPadding: 0
                     Accessible.name: "場所の表示を閉じる"
                     Layout.minimumWidth: plugin.touchHeight
                     Layout.minimumHeight: plugin.touchHeight
@@ -302,18 +348,16 @@ Item {
                 color: QfTheme.secondaryTextColor
             }
             RowLayout {
-                Button {
+                LocationButton {
                     text: plugin.atLimit ? "地点数が上限です" :
                         !plugin.stops.length && plugin.currentPosition ? "現在地からの経路" :
                         plugin.stops.length && !plugin.needsOrigin ? "目的地として追加" : "ここへの経路"
                     enabled: !plugin.atLimit && !plugin.pending
                     Layout.minimumHeight: plugin.touchHeight
-                    Material.background: plugin.orange
-                    Material.foreground: plugin.ink
+                    primary: true
                     onClicked: plugin.usePreview()
                 }
-                Button {
-                    flat: true
+                LocationButton {
                     text: "候補に戻る"
                     onClicked: {
                         plugin.preview = null
@@ -326,7 +370,7 @@ Item {
 
     QfMultiFeatureListModel { id: matches }
 
-    Button {
+    LocationButton {
         parent: plugin.canvas.parent
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
@@ -336,8 +380,7 @@ Item {
         enabled: !plugin.pending
         text: plugin.pending ? "経路を検索中…" : plugin.searchHint ? "接続設定を入力" : "経路を検索"
         Accessible.description: plugin.statusText
-        Material.background: enabled ? plugin.orange : QfTheme.controlBackgroundDisabledColor
-        Material.foreground: plugin.ink
+        primary: true
         onClicked: {
             if (plugin.searchHint) {
                 plugin.picking = false
@@ -382,14 +425,12 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 1
-                Label { text: "Amazon Location Service"; color: "white"; font: QfTheme.tipFont }
+                Label { text: plugin.serviceName; color: "white"; font: QfTheme.tipFont }
                 Label { text: header.title; color: "white"; font: QfTheme.strongTitleFont }
             }
-            Button {
-                flat: true
+            LocationButton {
                 text: header.dismissText
                 Layout.minimumHeight: plugin.touchHeight
-                Material.foreground: "white"
                 onClicked: header.dismissed()
             }
         }
@@ -401,10 +442,11 @@ Item {
         font: QfTheme.strongResultFont
     }
 
-    component MoveButton: ToolButton {
+    component MoveButton: LocationButton {
         required property int stopIndex
         required property int step
         readonly property int target: stopIndex + step
+        horizontalPadding: 0
         text: step < 0 ? "↑" : "↓"
         visible: plugin.reorderable
         enabled: !plugin.pending && target >= 0 && target < plugin.stops.length
@@ -540,16 +582,16 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         SectionTitle { text: plugin.needsOrigin ? "出発地を選択" : "地点を追加"; Layout.topMargin: 0 }
-                        Button { flat: true; text: "接続設定"; enabled: !plugin.pending; onClicked: settingsPopup.open() }
+                        LocationButton { text: "接続設定"; enabled: !plugin.pending; onClicked: settingsPopup.open() }
                     }
-                    Button {
+                    LocationButton {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: !plugin.atLimit && !plugin.pending
                         text: plugin.needsOrigin ? "出発地をPOI検索" : plugin.stops.length > 1 ? "次の目的地をPOI検索" : "目的地をPOI検索"
                         onClicked: plugin.openPlaces(true)
                     }
-                    Button {
+                    LocationButton {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: !!plugin.currentPosition && !plugin.atLimit && !plugin.pending
@@ -564,7 +606,7 @@ Item {
                         color: QfTheme.secondaryTextColor
                         font: QfTheme.tipFont
                     }
-                    Button {
+                    LocationButton {
                         text: "地図をタップして地点を追加"
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
@@ -575,9 +617,8 @@ Item {
                             plugin.window.displayToast("訪問順に地図をタップしてください。2地点以上で地図から経路を検索できます。")
                         }
                     }
-                    Button {
+                    LocationButton {
                         id: layerToggle
-                        flat: true
                         checkable: true
                         Layout.fillWidth: true
                         text: checked ? "レイヤから追加 ▴" : "レイヤから追加 ▾"
@@ -593,7 +634,7 @@ Item {
                         valueRole: "LayerPointer"
                         displayText: count ? currentText : "対象のレイヤがありません"
                     }
-                    Button {
+                    LocationButton {
                         visible: layerToggle.checked
                         text: "レイヤの地物を選択"
                         Layout.fillWidth: true
@@ -653,8 +694,8 @@ Item {
                     RowLayout {
                         visible: plugin.stops.length > 0
                         enabled: !plugin.pending
-                        Button { flat: true; text: "末尾の地点を削除"; onClicked: plugin.stops = plugin.stops.slice(0, -1) }
-                        Button { flat: true; text: "全消去"; onClicked: plugin.stops = [] }
+                        LocationButton { text: "末尾の地点を削除"; onClicked: plugin.stops = plugin.stops.slice(0, -1) }
+                        LocationButton { text: "全消去"; onClicked: plugin.stops = [] }
                     }
                 }
             }
@@ -676,7 +717,7 @@ Item {
                     text: plugin.statusText
                     color: plugin.message ? plugin.accent : QfTheme.mainTextColor
                 }
-                Button {
+                LocationButton {
                     Layout.fillWidth: true
                     Layout.minimumHeight: 48
                     enabled: !plugin.pending && !plugin.searchHint
@@ -685,8 +726,7 @@ Item {
                     topInset: 0
                     bottomInset: 0
                     font: QfTheme.strongTitleFont
-                    Material.background: enabled ? plugin.orange : QfTheme.controlBackgroundDisabledColor
-                    Material.foreground: plugin.ink
+                    primary: true
                     onClicked: plugin.search()
                 }
             }
@@ -732,8 +772,6 @@ Item {
                 apiKey: plugin.apiKey
                 connectionHint: plugin.connectionHint
                 searchCenter: plugin.mapCenter
-                accent: plugin.accent
-                ink: plugin.ink
                 gutter: plugin.gutter
                 touchHeight: plugin.touchHeight
                 selectionHint: places.forRoute ? "経路に追加する場所を選択してください。" : "場所を選択すると地図に表示します。"
@@ -822,6 +860,8 @@ Item {
                     width: ListView.view.width
                     implicitHeight: Math.max(plugin.touchHeight, implicitContentHeight + topPadding + bottomPadding)
                     enabled: !plugin.atLimit
+                    Material.accent: plugin.accent
+                    Material.foreground: plugin.accent
                     text: model.featureName || ("FID " + model.featureId)
                     onClicked: plugin.addStop(QfGeometryUtils.centroid(model.geometry), model.crs, text)
                 }

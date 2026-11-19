@@ -1,6 +1,6 @@
 [general]
-name=Amazon Location Routes
+name=Amazon Location Service
 author=Yamazaki-Kei7
 description=Search places and plan driving routes from your current location, POIs, map points, or layer features
-icon=icon.svg
-version=1.5.0
+icon=Arch_Amazon-Location-Service_32.svg
+version=1.6.3

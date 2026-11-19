@@ -12,8 +12,6 @@ ColumnLayout {
     required property string apiKey
     required property string connectionHint
     required property var searchCenter
-    required property color accent
-    required property color ink
     required property int gutter
     required property int touchHeight
     required property string selectionHint
@@ -88,12 +86,11 @@ ColumnLayout {
                 onAccepted: search.submit()
                 onTextEdited: search.clearResults()
             }
-            Button {
+            LocationButton {
                 text: "検索"
                 Layout.minimumHeight: search.touchHeight
                 enabled: !!query.text.trim() && !search.pending && !search.connectionHint
-                Material.background: enabled ? search.accent : QfTheme.controlBackgroundDisabledColor
-                Material.foreground: QfTheme.darkTheme ? search.ink : "white"
+                primary: true
                 onClicked: search.submit()
             }
         }
@@ -104,9 +101,8 @@ ColumnLayout {
                 search.feedback || "地図の中心に近い場所を優先します。")
             color: QfTheme.secondaryTextColor
         }
-        Button {
+        LocationButton {
             text: "接続設定"
-            flat: true
             visible: !!search.connectionHint || (!search.pending && !search.results.length)
             onClicked: search.settingsRequested()
         }
@@ -152,7 +148,7 @@ ColumnLayout {
                 }
                 Label {
                     text: "›"
-                    color: QfTheme.secondaryTextColor
+                    color: Material.accent
                     font: QfTheme.strongTitleFont
                     Accessible.ignored: true
                 }

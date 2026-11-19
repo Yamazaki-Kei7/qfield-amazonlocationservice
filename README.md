@@ -1,4 +1,4 @@
-# Amazon Location Routes for QField
+# Amazon Location Service for QField
 
 QField で施設名や住所から場所を探し、地図に表示できます。車で向かうときは、現在地や任意の出発地からその場所までの経路を検索できます。経由地を含む場合は、指定した訪問順で 2〜25 地点を巡ります。
 
@@ -17,6 +17,8 @@ QField で施設名や住所から場所を探し、地図に表示できます�
 
 ## インストール
 
+旧 ZIP（`amazon-location-routes.zip`）から切り替える場合は、先にプラグイン管理画面で旧版を無効にしてください。QField は ZIP のファイル名からインストール先を決めるため、新旧のプラグインが別々に登録されます。
+
 ### URL からインストールする（おすすめ）
 
 1. QField のサイドダッシュボードを開き、メニューの「Plugin Manager」をタップします。
@@ -26,30 +28,30 @@ QField で施設名や住所から場所を探し、地図に表示できます�
 2. プラグイン管理画面の下部にある「URL からプラグインをインストール」をタップします。入力欄に次の URL を貼り付け、「OK」を押します。
 
    ```text
-   https://raw.githubusercontent.com/Yamazaki-Kei7/qfield-amazonlocationservice/main/amazon-location-routes.zip
+   https://raw.githubusercontent.com/Yamazaki-Kei7/qfield-amazonlocationservice/main/amazon-location-service.zip
    ```
 
    <img src="img/plugin-install-url-dialog.png" alt="Install Plugin from URL ダイアログ。中央に URL 入力欄、右下に OK ボタンがある" width="360">
 
-3. 「ローカルプラグイン」タブで「Amazon Location Routes」を確認し、右側のスイッチをオンにします。実行の許可を求めるダイアログが出たら許可してください。下の画像は有効になった状態です。
-
-   <img src="img/amazon-location-routes-enabled.png" alt="ローカルプラグインの一覧で Amazon Location Routes のスイッチが緑色のオンになっている" width="360">
+3. 「ローカルプラグイン」タブで <img src="Arch_Amazon-Location-Service_32.svg" alt="" width="24">「Amazon Location Service」の右側にあるスイッチをオンにします。実行の許可を求めるダイアログが出たら許可してください。
 
 プラグイン管理画面の場所やボタンの表記は QField のバージョンによって異なります。見つからない場合は [QField のプラグインのドキュメント](https://docs.qfield.org/how-to/advanced-how-tos/plugins/)を確認してください。
 
 ### ZIP を手動で配置する
 
-URL からインストールできない環境では、[amazon-location-routes.zip](https://raw.githubusercontent.com/Yamazaki-Kei7/qfield-amazonlocationservice/main/amazon-location-routes.zip) をダウンロードして展開し、QField のアプリデータ内に `plugins/amazon-location-routes/main.qml` がある構成で配置します。QField を再起動し、プラグイン管理画面で有効にしてください。
+URL からインストールできない環境では、[amazon-location-service.zip](https://raw.githubusercontent.com/Yamazaki-Kei7/qfield-amazonlocationservice/main/amazon-location-service.zip) をダウンロードして展開し、QField のアプリデータ内に `plugins/amazon-location-service/main.qml` がある構成で配置します。QField を再起動し、プラグイン管理画面で有効にしてください。
 
 ## 使い方
 
 ### 接続設定
 
-QField のプラグインツールバーには、虫眼鏡の「POI検索」と、経路線の「経路検索」があります。初回はどちらかを開き、「接続設定」で AWS リージョンと API キーを入力して「完了」を押します。設定は両方の機能で共通です。
+地図右上の赤いサービスボタン <img src="Arch_Amazon-Location-Service_32.svg" alt="Amazon Location Service" width="24"> をタップすると、「Amazon Location Service」メニューが開きます。もう一度タップすると閉じます。初回はメニューから「POI検索」か「経路検索」を選び、「接続設定」で AWS リージョンと API キーを入力して「完了」を押します。設定は両方の機能で共通です。
+
+<img src="img/amazon-location-menu.png" alt="Amazon Location Service メニュー内に「POI検索」と「経路検索」が並ぶ" width="215">
 
 ### 場所を探して地図に表示する
 
-虫眼鏡を押し、施設名・住所・「コンビニ」などのキーワードを入力して「検索」を押します。地図の中心に近い候補が優先されます。施設名と住所を確認して候補を選ぶと、地図がその場所に移動してマーカーが付きます。「候補に戻る」で別の場所を見比べられます。
+サービスボタン → 「POI検索」を選び、施設名・住所・「コンビニ」などのキーワードを入力して「検索」を押します。地図の中心に近い候補が優先されます。施設名と住所を確認して候補を選ぶと、地図がその場所に移動してマーカーが付きます。「候補に戻る」で別の場所を見比べられます。
 
 <img src="img/poi-search-results.png" alt="POI検索画面。図書館の検索結果に施設名と住所が並ぶ。表示内容は操作説明用のサンプル" width="360">
 
@@ -57,7 +59,7 @@ QField のプラグインツールバーには、虫眼鏡の「POI検索」と�
 
 ### 現在地から目的地までの経路を検索する
 
-1. QField の測位をオンにして、経路ボタンを開きます。「現在地を出発地にする」を押します。現在地は押した時点の位置で固定されます。
+1. QField の測位をオンにして、サービスボタン → 「経路検索」を選びます。「現在地を出発地にする」を押します。現在地は押した時点の位置で固定されます。
 2. 「目的地をPOI検索」で施設名や住所を検索し、候補をタップします。目的地を先に選んだ場合は、次に現在地・地図・レイヤ・POI検索から出発地を追加できます。
 3. 訪問順を確認して「指定順で最短経路を検索」を押すと、車の経路が地図に表示されます。
 
@@ -77,7 +79,7 @@ QField のプラグインツールバーには、虫眼鏡の「POI検索」と�
 
 ### 訪問順を確認して検索する
 
-地図で地点を追加している場合は、右上の地点数が付いた経路ボタンを押すと、経路検索画面に戻れます。「訪問順」までスクロールし、上から出発地、経由地、目的地の順に並んでいることを確認します。
+地図で地点を追加している間は、サービスボタンに地点数が表示されます。サービスボタン → 「経路検索」で経路検索画面に戻り、「訪問順」の一覧で上から出発地、経由地、目的地の順に並んでいることを確認します。
 
 <img src="img/visit-order-editor.png" alt="訪問順の一覧。出発地、経由地、目的地の各カードに番号と上下矢印があり、下部に「指定順で最短経路を検索」が表示されている" width="360">
 
@@ -93,7 +95,7 @@ QField のプラグインツールバーには、虫眼鏡の「POI検索」と�
 
 ### 知っておくと便利なこと
 
-- 「指定順で最短経路を検索」が押せないときは、ボタンの上に不足している項目が表示されます。地点が2つ以上あり、接続設定がそろうとボタンがオレンジ色になります。
+- 「指定順で最短経路を検索」が押せないときは、ボタンの上に不足している項目が表示されます。地点が2つ以上あり、接続設定がそろうとボタンが赤色になります。
 - 地物で指定した場合、点はその位置、線・面・マルチパート地物は重心を使います。建物の出入口など特定の位置から検索したいときは、地図をタップして指定してください。
 - 地点の追加・並べ替え・削除をすると、表示済みの経路は消えます。新しい順序でもう一度検索してください。
 - 別のプロジェクトを開くと、POI のマーカー、地点と経路はクリアされます。
@@ -103,7 +105,7 @@ QField のプラグインツールバーには、虫眼鏡の「POI検索」と�
 
 | 表示・症状 | 確認すること |
 | --- | --- |
-| ツールバーに経路ボタンが出ない | プラグイン管理画面でスイッチがオンになっているか、実行を許可したかを確認します。 |
+| 地図右上にサービスボタンが出ない | プラグイン管理画面でスイッチがオンになっているか、実行を許可したかを確認します。 |
 | POI検索で HTTP 403 が表示される | キーの期限とリージョン、および `geo-places:SearchText` の許可を確認します。 |
 | 現在地を追加できない | QField と端末の位置情報設定を確認し、有効な測位結果を待ちます。地図・レイヤ・POI検索からも出発地を指定できます。 |
 | 「通信できません。接続を確認してください。」 | インターネット接続と、リージョン名の入力ミスがないかを確認します。 |
@@ -122,11 +124,13 @@ QField のプラグインツールバーには、虫眼鏡の「POI検索」と�
 配布用の ZIP は、このディレクトリで次のコマンドを実行して作成します。
 
 ```sh
-zip -j amazon-location-routes.zip main.qml PlaceSearch.qml LocationRequest.qml Routes.js metadata.txt icon.svg LICENSE
+zip -j amazon-location-service.zip main.qml PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg Arch_Amazon-Location-Service_32.svg LICENSE
 ```
 
-URL からのインストールでは `main` ブランチの `amazon-location-routes.zip` がそのまま配布されます。ソースを変更したら、`metadata.txt` の `version` を更新し、ZIP を作り直してコミットしてください。
+URL からのインストールでは `main` ブランチの `amazon-location-service.zip` がそのまま配布されます。ソースを変更したら、`metadata.txt` の `version` を更新し、ZIP を作り直してコミットしてください。
 
 ## ライセンス
 
-ライセンスは同梱の [LICENSE](LICENSE)（GNU GPL v2）を参照してください。
+プラグインのライセンスは同梱の [LICENSE](LICENSE)（GNU GPL v2）を参照してください。
+
+プラグインのアイコンには、AWS が配布する Amazon Location Service のアーキテクチャアイコンを使用しています。[AWS Architecture Icons](https://aws.amazon.com/architecture/icons/)

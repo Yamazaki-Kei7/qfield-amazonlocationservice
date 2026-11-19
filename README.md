@@ -1,6 +1,6 @@
 # Amazon Location Service for QField
 
-QField で施設名や住所から場所を探し、地図に表示できます。車で向かうときは、現在地や任意の出発地からその場所までの経路を検索できます。経由地を含む場合は、指定した訪問順で 2〜25 地点を巡ります。
+QField で施設名や住所から場所を探し、地図に表示できます。経路検索では、移動手段を選んで、現在地や任意の出発地から目的地までの経路を地図に表示できます。
 
 ## 必要なもの
 
@@ -11,7 +11,7 @@ QField で施設名や住所から場所を探し、地図に表示できます�
 | 使用する機能 | API キーに許可するアクション |
 | --- | --- |
 | 施設名・住所からの POI 検索 | `geo-places:SearchText` |
-| 車の経路検索 | `geo-routes:CalculateRoutes` |
+| 経路検索（全移動手段） | `geo-routes:CalculateRoutes` |
 
 両方の機能を使う場合は、同じキーに両方のアクションを許可してください。既存の経路検索用キーには `geo-places:SearchText` を追加します。[API キーの設定](https://docs.aws.amazon.com/location/latest/developerguide/using-apikeys.html)
 
@@ -59,11 +59,11 @@ URL からインストールできない環境では、[amazon-location-service.
 
 ### 現在地から目的地までの経路を検索する
 
-1. QField の測位をオンにして、サービスボタン → 「経路検索」を選びます。「現在地を出発地にする」を押します。現在地は押した時点の位置で固定されます。
+1. QField の測位をオンにして、サービスボタン → 「経路検索」を開きます。「移動手段」で車・徒歩・スクーター・トラック・公共交通・複合移動のアイコンを1つ選び、「現在地を出発地にする」を押します。初期選択は車です。現在地は押した時点の位置で固定されます。
 2. 「目的地をPOI検索」で施設名や住所を検索し、候補をタップします。目的地を先に選んだ場合は、次に現在地・地図・レイヤ・POI検索から出発地を追加できます。
-3. 訪問順を確認して「指定順で最短経路を検索」を押すと、車の経路が地図に表示されます。
+3. 地点を確認し、画面下部の検索ボタンを押します。車・徒歩・スクーター・トラックは、指定した順に2〜25地点を巡る最短距離の経路を検索します。公共交通と複合移動は、出発地と目的地の2地点を指定し、現在時刻に出発する経路を検索します。複合移動では徒歩、公共交通、タクシーなどを組み合わせます。[AWSの移動手段一覧](https://docs.aws.amazon.com/location/latest/developerguide/concepts-how.html)
 
-<img src="img/route-with-poi.png" alt="経路検索画面。現在地とPOIを登録した訪問順と、画面下部の経路検索ボタン" width="360">
+<img src="img/travel-modes.png" alt="経路検索画面。6つの移動手段のうち、徒歩のアイコンが選択されている" width="360">
 
 ### 地図やレイヤから地点を追加する
 
@@ -85,7 +85,7 @@ URL からインストールできない環境では、[amazon-location-service.
 
 順番を変えるには、カード左端の番号を上下にドラッグするか、右端の「↑」「↓」で 1 つずつ移動します。「末尾の地点を削除」を押すと一覧の最後の地点が消えます。「全消去」を押すと地点と経路がすべて消えます。
 
-訪問順が決まったら「指定順で最短経路を検索」を押します。
+訪問順が決まったら、画面下部の検索ボタンを押します。移動手段を切り替えて再検索するときも、登録した地点と訪問順は保持されます。
 
 ### 地図で経路を確認する
 
@@ -95,7 +95,7 @@ URL からインストールできない環境では、[amazon-location-service.
 
 ### 知っておくと便利なこと
 
-- 「指定順で最短経路を検索」が押せないときは、ボタンの上に不足している項目が表示されます。地点が2つ以上あり、接続設定がそろうとボタンが赤色になります。
+- 検索ボタンが押せないときは、ボタンの上の案内を確認してください。公共交通や複合移動に切り替えたときに3地点以上ある場合は、2地点に減らすか、経由地を使える移動手段を選んでください。
 - 地物で指定した場合、点はその位置、線・面・マルチパート地物は重心を使います。建物の出入口など特定の位置から検索したいときは、地図をタップして指定してください。
 - 地点の追加・並べ替え・削除をすると、表示済みの経路は消えます。新しい順序でもう一度検索してください。
 - 別のプロジェクトを開くと、POI のマーカー、地点と経路はクリアされます。
@@ -110,21 +110,21 @@ URL からインストールできない環境では、[amazon-location-service.
 | 現在地を追加できない | QField と端末の位置情報設定を確認し、有効な測位結果を待ちます。地図・レイヤ・POI検索からも出発地を指定できます。 |
 | 「通信できません。接続を確認してください。」 | インターネット接続と、リージョン名の入力ミスがないかを確認します。 |
 | 「検索できませんでした（HTTP …）。」 | API キーが正しく有効期限内か、`geo-routes:CalculateRoutes` を許可しているか、キーを作成したリージョンを入力しているかを確認します。地点が道路から大きく離れている場合にも表示されることがあります。 |
-| 「全区間を通る経路が見つかりませんでした。」 | 車でたどり着けない地点（海上や道路のない場所など）が含まれていないかを確認します。 |
+| 「全区間を通る経路が見つかりませんでした。」 | 選んだ移動手段で各地点に到達できるか確認してください。公共交通や複合移動の対応範囲は地域や交通事業者によって異なります。 |
 | 「応答がありません。接続を確認して再検索してください。」 | 45 秒以内に応答がなかった場合に表示されます。通信環境のよい場所で再検索します。 |
 
 ## 注意事項
 
 - POI 検索と経路検索は Amazon Location Service の利用料金の対象です。詳しくは[料金ページ](https://aws.amazon.com/location/pricing/)を確認してください。
 - POI 検索は入力した検索語と地図中心の座標、経路検索は指定した各地点の座標を、API キーとともに Amazon Location Service に送信します。[SearchText の仕様](https://docs.aws.amazon.com/location/latest/APIReference/API_geoplaces_SearchText.html)・[CalculateRoutes の仕様](https://docs.aws.amazon.com/location/latest/APIReference/API_CalculateRoutes.html)
-- 移動手段は車のみです。
+- 複合移動は Premium 料金の対象です。[経路検索の料金区分](https://docs.aws.amazon.com/location/latest/developerguide/routes-pricing.html)
 
 ## 開発者向け
 
 配布用の ZIP は、このディレクトリで次のコマンドを実行して作成します。
 
 ```sh
-zip -j amazon-location-service.zip main.qml PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg LICENSE
+zip amazon-location-service.zip main.qml PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg LICENSE
 ```
 
 URL からのインストールでは `main` ブランチの `amazon-location-service.zip` がそのまま配布されます。ソースを変更したら、`metadata.txt` の `version` を更新し、ZIP を作り直してコミットしてください。

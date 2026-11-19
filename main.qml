@@ -46,6 +46,7 @@ Item {
 
     function pickPoint(screenPoint, device, interaction) {
         if (!picking || interaction !== "clicked") return false
+        if (pending) return true
         const mapPoint = canvas.mapSettings.screenToCoordinate(screenPoint)
         addStop(mapPoint, canvas.mapSettings.destinationCrs, "地図上の地点")
         return true
@@ -87,6 +88,10 @@ Item {
         message = ""
     }
 
+    onMessageChanged: {
+        if (picking && message) window.displayToast(message)
+    }
+
     function search() {
         const region = regionField.text.trim()
         const key = keyField.text.trim()
@@ -112,6 +117,7 @@ Item {
                 route.geometryWrapper.qgsGeometry = geometry
                 const projected = QfGeometryUtils.reprojectGeometry(geometry, wgs84, canvas.mapSettings.destinationCrs)
                 iface.setMapExtent(QfGeometryUtils.boundingBox(projected))
+                picking = false
                 panel.close()
                 window.displayToast(stops.length + "地点の経路を表示しました。")
             } catch (error) {
@@ -205,6 +211,28 @@ Item {
     }
 
     QfMultiFeatureListModel { id: matches }
+
+    Button {
+        parent: plugin.canvas.parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Math.max(plugin.window.sceneBottomMargin, plugin.canvas.bottomMargin) + plugin.gutter
+        height: Math.max(implicitHeight, plugin.touchHeight)
+        visible: plugin.picking && plugin.stops.length >= 2
+        enabled: !plugin.pending
+        text: plugin.pending ? "経路を検索中…" : plugin.searchHint ? "接続設定を入力" : "経路を検索"
+        Accessible.description: plugin.statusText
+        Material.background: enabled ? plugin.orange : QfTheme.controlBackgroundDisabledColor
+        Material.foreground: plugin.ink
+        onClicked: {
+            if (plugin.searchHint) {
+                plugin.picking = false
+                panel.open()
+            } else {
+                plugin.search()
+            }
+        }
+    }
 
     component RoutePopup: Popup {
         parent: plugin.window.contentItem
@@ -403,7 +431,7 @@ Item {
                         onClicked: {
                             panel.close()
                             plugin.picking = true
-                            plugin.window.displayToast("訪問順に地図をタップし、経路ボタンで戻ってください。")
+                            plugin.window.displayToast("訪問順に地図をタップしてください。2地点以上で地図から経路を検索できます。")
                         }
                     }
                     Label { id: layerLabel; text: "地物を選ぶレイヤ" }

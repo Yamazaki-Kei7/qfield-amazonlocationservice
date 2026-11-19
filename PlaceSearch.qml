@@ -43,17 +43,17 @@ ColumnLayout {
         const center = searchCenter()
         results = []
         if (!Routes.validPosition(center)) {
-            feedback = "地図の中心座標を取得できません。地図を移動して再検索してください。"
+            feedback = "Could not get the map center. Move the map and search again."
             return
         }
         Qt.inputMethod.hide()
         feedback = ""
-        request.post("places", "search-text", { QueryText: term, BiasPosition: center, Language: "ja" }, text => {
+        request.post("places", "search-text", { QueryText: term, BiasPosition: center, Language: "en" }, text => {
             try {
                 results = Routes.placeResults(JSON.parse(text))
-                feedback = results.length ? results.length + "件 · " + selectionHint : "該当する場所がありません。施設名や地域名を変えて検索してください。"
+                feedback = results.length ? results.length + (results.length === 1 ? " result · " : " results · ") + selectionHint : "No places found. Try another place name or area."
             } catch (error) {
-                feedback = "検索結果を読み取れませんでした。もう一度検索してください。"
+                feedback = "Could not read the search results. Try again."
             }
         })
     }
@@ -62,7 +62,7 @@ ColumnLayout {
         region: search.region
         apiKey: search.apiKey
         onFailed: reason => search.feedback = reason
-        onRejected: status => search.feedback = "POIを検索できませんでした（HTTP " + status + "）。リージョンとキーの geo-places:SearchText 権限を確認してください。"
+        onRejected: status => search.feedback = "Place search failed (HTTP " + status + "). Check the Region and the key's geo-places:SearchText permission."
     }
 
     spacing: 0
@@ -71,7 +71,7 @@ ColumnLayout {
         Layout.margins: search.gutter
         spacing: 6
         Label {
-            text: "施設名・住所"
+            text: "Place or address"
             font: QfTheme.strongResultFont
         }
         RowLayout {
@@ -80,14 +80,14 @@ ColumnLayout {
                 id: query
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                placeholderText: "例：東京駅、コンビニ"
-                Accessible.name: "施設名・住所"
+                placeholderText: "e.g. station, cafe"
+                Accessible.name: "Place or address"
                 maximumLength: 200
                 onAccepted: search.submit()
                 onTextEdited: search.clearResults()
             }
             LocationButton {
-                text: "検索"
+                text: "Search"
                 Layout.minimumHeight: search.touchHeight
                 enabled: !!query.text.trim() && !search.pending && !search.connectionHint
                 primary: true
@@ -97,12 +97,12 @@ ColumnLayout {
         Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
-            text: search.connectionHint || (search.pending ? "検索中…" :
-                search.feedback || "地図の中心に近い場所を優先します。")
+            text: search.connectionHint || (search.pending ? "Searching…" :
+                search.feedback || "Places near the map center are prioritized.")
             color: QfTheme.secondaryTextColor
         }
         LocationButton {
-            text: "接続設定"
+            text: "Settings"
             visible: !!search.connectionHint || (!search.pending && !search.results.length)
             onClicked: search.settingsRequested()
         }
@@ -123,7 +123,7 @@ ColumnLayout {
             leftPadding: search.gutter
             rightPadding: search.gutter
             implicitHeight: Math.max(search.touchHeight, implicitContentHeight + topPadding + bottomPadding)
-            Accessible.name: [modelData.label, modelData.address].filter(Boolean).join("、")
+            Accessible.name: [modelData.label, modelData.address].filter(Boolean).join(", ")
             contentItem: RowLayout {
                 spacing: 8
                 ColumnLayout {

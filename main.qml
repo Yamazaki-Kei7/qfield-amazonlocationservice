@@ -60,15 +60,15 @@ Item {
         && !connectionHint && !pending
     readonly property string statusText: message || searchHint
     readonly property string searchHint: {
-        if (stops.length > maxStops) return travelMode.label + "は" + maxStops + "地点までです。地点を減らすか、移動手段を変更してください。"
-        if (stops.length === 0) return "出発地と目的地を、訪問する順に追加してください。"
-        if (needsOrigin) return "目的地を選択済みです。出発地を追加してください。"
-        if (stops.length === 1) return "目的地をあと1地点追加してください。"
+        if (stops.length > maxStops) return travelMode.label + " supports up to " + maxStops + " stops. Remove stops or change the travel mode."
+        if (stops.length === 0) return "Add an origin and destination in visit order."
+        if (needsOrigin) return "Destination selected. Add an origin."
+        if (stops.length === 1) return "Add one more stop as the destination."
         return connectionHint
     }
     readonly property string connectionHint: {
-        if (!regionField.validRegion) return "AWS リージョンを入力してください（例：ap-northeast-1）。"
-        if (!apiKey) return "Amazon Location API キーを入力してください。"
+        if (!regionField.validRegion) return "Enter an AWS Region (e.g. ap-northeast-1)."
+        if (!apiKey) return "Enter an Amazon Location API key."
         return ""
     }
 
@@ -86,7 +86,7 @@ Item {
         if (!picking || interaction !== "clicked") return false
         if (pending) return true
         const mapPoint = canvas.mapSettings.screenToCoordinate(screenPoint)
-        addStop(mapPoint, canvas.mapSettings.destinationCrs, "地図上の地点")
+        addStop(mapPoint, canvas.mapSettings.destinationCrs, "Map point")
         return true
     }
 
@@ -107,13 +107,13 @@ Item {
     function addPosition(position, label, asDestination = false) {
         if (pending) return
         if (atLimit) {
-            window.displayToast(travelMode.label + "で指定できる地点は" + maxStops + "件までです。")
+            window.displayToast(travelMode.label + " supports up to " + maxStops + " stops.")
             return
         }
         // QML list delegates can supply a QVariantList instead of a JavaScript array.
         const coordinates = position && [position[0], position[1]]
         if (!Routes.validPosition(coordinates)) {
-            window.displayToast("地点の座標を取得できませんでした。")
+            window.displayToast("Could not get coordinates for this stop.")
             return
         }
         const stop = { position: coordinates, label: label }
@@ -126,7 +126,7 @@ Item {
         } else {
             stops = stops.concat([stop])
         }
-        window.displayToast(label + "を経路に追加しました。")
+        window.displayToast("Added " + label + " to the route.")
     }
 
     function mapCenter() {
@@ -150,7 +150,7 @@ Item {
         if (!preview || !canAddStop) return
         const place = preview
         preview = null
-        if (!stops.length && currentPosition) addPosition(currentPosition, "現在地")
+        if (!stops.length && currentPosition) addPosition(currentPosition, "Current location")
         addPosition(place.position, place.label, true)
         panel.open()
     }
@@ -235,7 +235,7 @@ Item {
                 fitRouteOnMap(geometry)
                 picking = false
                 panel.close()
-                window.displayToast(travelMode.label + "で" + stops.length + "地点の経路を表示しました。")
+                window.displayToast(travelMode.label + " route with " + stops.length + " stops displayed.")
             } catch (error) {
                 message = error.message
             }
@@ -256,7 +256,7 @@ Item {
                     stops = result.stops
                     undoStops = before
                 }
-                optimizeNote = (result.changed ? "最適な順に並べ替えました" : "すでに最適な順序です") + result.summary
+                optimizeNote = (result.changed ? "Visit order optimized" : "Visit order is already optimal") + result.summary + "."
             } catch (error) {
                 message = error.message
             }
@@ -273,7 +273,7 @@ Item {
         region: plugin.region
         apiKey: plugin.apiKey
         onFailed: reason => plugin.message = reason
-        onRejected: (status, responseText) => plugin.message = Routes.rejection("検索できませんでした", status, responseText)
+        onRejected: (status, responseText) => plugin.message = Routes.rejection("Could not find a route", status, responseText)
     }
 
     LocationRequest {
@@ -316,7 +316,7 @@ Item {
         statusBadge.bottomMargin: 0
         statusBadge.rightMargin: 0
         Accessible.name: plugin.serviceName
-        Accessible.description: checked ? "検索ボタンを収納する" : "検索ボタンを表示する"
+        Accessible.description: checked ? "Hide search buttons" : "Show search buttons"
         ToolTip.text: plugin.serviceName
         ToolTip.visible: hovered && !checked
         ToolTip.delay: 600
@@ -337,7 +337,7 @@ Item {
 
     SearchToolButton {
         id: placeButton
-        text: "POI検索"
+        text: "Place Search"
         iconSource: Qt.resolvedUrl("poi-search.svg")
         enabled: !plugin.pending
         onClicked: plugin.openPlaces(false)
@@ -345,7 +345,7 @@ Item {
 
     SearchToolButton {
         id: routeButton
-        text: "経路検索"
+        text: "Route Search"
         iconSource: Qt.resolvedUrl("icon.svg")
         onClicked: {
             plugin.picking = false
@@ -419,7 +419,9 @@ Item {
                 LocationButton {
                     text: "×"
                     horizontalPadding: 0
-                    Accessible.name: "場所の表示を閉じる"
+                    leftPadding: horizontalPadding
+                    rightPadding: horizontalPadding
+                    Accessible.name: "Close place details"
                     Layout.minimumWidth: plugin.touchHeight
                     Layout.minimumHeight: plugin.touchHeight
                     onClicked: plugin.preview = null
@@ -433,18 +435,23 @@ Item {
                 wrapMode: Text.Wrap
                 color: QfTheme.secondaryTextColor
             }
-            RowLayout {
+            ColumnLayout {
+                Layout.fillWidth: true
                 LocationButton {
-                    text: plugin.atLimit ? "地点数が上限です" :
-                        !plugin.stops.length && plugin.currentPosition ? "現在地からの経路" :
-                        plugin.stops.length && !plugin.needsOrigin ? "目的地として追加" : "ここへの経路"
+                    text: plugin.atLimit ? "Stop limit reached" :
+                        !plugin.stops.length && plugin.currentPosition ? "Route from current location" :
+                        plugin.stops.length && !plugin.needsOrigin ? "Add as destination" : "Route to here"
+                    Layout.fillWidth: true
+                    leftPadding: 8
+                    rightPadding: 8
                     enabled: plugin.canAddStop
                     Layout.minimumHeight: plugin.touchHeight
                     primary: true
                     onClicked: plugin.usePreview()
                 }
                 LocationButton {
-                    text: "候補に戻る"
+                    text: "Back to results"
+                    Layout.fillWidth: true
                     onClicked: {
                         plugin.preview = null
                         places.open()
@@ -464,7 +471,7 @@ Item {
         height: Math.max(implicitHeight, plugin.touchHeight)
         visible: plugin.picking && plugin.stops.length >= 2
         enabled: !plugin.pending
-        text: plugin.pending ? "経路を検索中…" : plugin.searchHint ? "接続設定を入力" : "経路を検索"
+        text: plugin.pending ? "Finding route…" : plugin.searchHint ? "Enter settings" : "Find route"
         Accessible.description: plugin.statusText
         primary: true
         onClicked: {
@@ -492,7 +499,7 @@ Item {
     component PanelHeader: Rectangle {
         id: header
         property string title
-        property string dismissText: "閉じる"
+        property string dismissText: "Close"
         property bool primaryDismiss: false
         signal dismissed()
         Layout.fillWidth: true
@@ -511,9 +518,10 @@ Item {
             }
             ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
-                Label { text: plugin.serviceName; color: "white"; font: QfTheme.tipFont }
-                Label { text: header.title; color: "white"; font: QfTheme.strongTitleFont }
+                Label { Layout.fillWidth: true; text: plugin.serviceName; color: "white"; font: QfTheme.tipFont; wrapMode: Text.Wrap }
+                Label { Layout.fillWidth: true; text: header.title; color: "white"; font: QfTheme.strongTitleFont; wrapMode: Text.Wrap }
             }
             LocationButton {
                 text: header.dismissText
@@ -535,10 +543,12 @@ Item {
         required property int step
         readonly property int target: stopIndex + step
         horizontalPadding: 0
+        leftPadding: horizontalPadding
+        rightPadding: horizontalPadding
         text: step < 0 ? "↑" : "↓"
         visible: plugin.reorderable
         enabled: !plugin.pending && target >= 0 && target < plugin.stops.length
-        Accessible.name: (stopIndex + 1) + "番目の地点を1つ" + (step < 0 ? "上" : "下") + "へ"
+        Accessible.name: "Move stop " + (stopIndex + 1) + (step < 0 ? " up" : " down")
         onClicked: plugin.moveStop(stopIndex, target)
         Layout.preferredWidth: plugin.touchHeight
         Layout.minimumHeight: plugin.touchHeight
@@ -551,8 +561,8 @@ Item {
         id: card
         required property int index
         readonly property var stop: plugin.stops[index]
-        readonly property string roleLabel: plugin.needsOrigin ? "目的地" : index === 0 ? "出発地" :
-            index === plugin.stops.length - 1 ? "目的地" : "経由地"
+        readonly property string roleLabel: plugin.needsOrigin ? "Destination" : index === 0 ? "Origin" :
+            index === plugin.stops.length - 1 ? "Destination" : "Stop"
         Layout.fillWidth: true
         Layout.minimumWidth: 0
         Layout.topMargin: 4
@@ -622,7 +632,14 @@ Item {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 spacing: 2
-                Label { text: card.roleLabel; color: QfTheme.secondaryTextColor; font: QfTheme.tipFont }
+                Label {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    text: card.roleLabel
+                    wrapMode: Text.Wrap
+                    color: QfTheme.secondaryTextColor
+                    font: QfTheme.tipFont
+                }
                 Label {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
@@ -655,7 +672,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            PanelHeader { title: "経路検索"; onDismissed: panel.close() }
+            PanelHeader { title: "Route Search"; onDismissed: panel.close() }
             ScrollView {
                 id: form
                 Layout.fillWidth: true
@@ -670,14 +687,14 @@ Item {
                     spacing: 4
                     RowLayout {
                         Layout.fillWidth: true
-                        SectionTitle { text: "移動手段"; Layout.topMargin: 0 }
-                        LocationButton { text: "接続設定"; enabled: !plugin.pending; onClicked: settingsPopup.open() }
+                        SectionTitle { text: "Travel mode"; Layout.topMargin: 0 }
+                        LocationButton { text: "Settings"; enabled: !plugin.pending; onClicked: settingsPopup.open() }
                     }
                     GridLayout {
                         id: travelModeGrid
                         readonly property int iconSize: 18
                         Layout.fillWidth: true
-                        columns: width < 280 ? 2 : 3
+                        columns: width < 250 ? 1 : width < 390 ? 2 : 3
                         columnSpacing: 4
                         rowSpacing: 0
                         enabled: !plugin.pending
@@ -690,6 +707,8 @@ Item {
                                 Layout.minimumHeight: plugin.touchHeight
                                 Layout.preferredHeight: implicitContentHeight + verticalPadding * 2
                                 horizontalPadding: 4
+                                leftPadding: horizontalPadding
+                                rightPadding: horizontalPadding
                                 verticalPadding: 2
                                 spacing: 4
                                 text: modelData.label
@@ -711,11 +730,11 @@ Item {
                         Layout.fillWidth: true
                         visible: Routes.allowsShortestRoute(plugin.travelMode.id)
                         enabled: !plugin.pending
-                        columns: width < 310 ? 2 : 3
+                        columns: 2
                         rowSpacing: 0
                         Label {
-                            Layout.columnSpan: routeChoices.columns === 2 ? 2 : 1
-                            text: "経路の優先条件"
+                            Layout.columnSpan: routeChoices.columns
+                            text: "Route preference"
                         }
                         Repeater {
                             model: Routes.routeCriteria
@@ -723,7 +742,7 @@ Item {
                                 required property string modelData
                                 Layout.minimumHeight: plugin.touchHeight
                                 text: Routes.criterionLabel(modelData)
-                                Accessible.name: "経路の優先条件・" + text
+                                Accessible.name: "Route preference: " + text
                                 checked: plugin.routeCriterion === modelData
                                 onClicked: plugin.routePreference = modelData
                             }
@@ -734,50 +753,52 @@ Item {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
                         color: QfTheme.secondaryTextColor
-                        text: plugin.routeCriterion ? plugin.travelMode.label + "の経路は時間優先で検索します。"
-                            : "出発地と目的地の2地点を指定し、現在時刻に出発します。"
+                        text: plugin.routeCriterion ? plugin.travelMode.label + " routes prioritize travel time."
+                            : "Choose an origin and destination. Departure is now."
                     }
-                    SectionTitle { text: plugin.needsOrigin ? "出発地を選択" : "地点を追加" }
+                    SectionTitle { text: plugin.needsOrigin ? "Choose origin" : "Add stops" }
                     LocationButton {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: plugin.canAddStop
-                        text: plugin.needsOrigin ? "出発地をPOI検索" : plugin.stops.length > 1 ? "次の目的地をPOI検索" : "目的地をPOI検索"
+                        text: plugin.needsOrigin ? "Search for origin" : plugin.stops.length > 1 ? "Search for next destination" : "Search for destination"
                         onClicked: plugin.openPlaces(true)
                     }
                     LocationButton {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: !!plugin.currentPosition && plugin.canAddStop
-                        text: plugin.needsOrigin || !plugin.stops.length ? "現在地を出発地にする" : "現在地を次の地点に追加"
-                        onClicked: plugin.addPosition(plugin.currentPosition, "現在地")
+                        text: plugin.needsOrigin || !plugin.stops.length ? "Use current location as origin" : "Add current location"
+                        leftPadding: 8
+                        rightPadding: 8
+                        onClicked: plugin.addPosition(plugin.currentPosition, "Current location")
                     }
                     Label {
                         Layout.fillWidth: true
                         visible: !plugin.currentPosition
                         wrapMode: Text.Wrap
-                        text: plugin.gnss && plugin.gnss.active ? "現在地の測位を待っています。" : "現在地を使うにはQFieldの測位をオンにしてください。"
+                        text: plugin.gnss && plugin.gnss.active ? "Waiting for a location fix." : "Turn on positioning in QField to use your current location."
                         color: QfTheme.secondaryTextColor
                         font: QfTheme.tipFont
                     }
                     LocationButton {
-                        text: "地図をタップして地点を追加"
+                        text: "Add stops from map"
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: plugin.canAddStop
                         onClicked: {
                             panel.close()
                             plugin.picking = true
-                            plugin.window.displayToast("訪問順に地図をタップしてください。2地点以上で地図から経路を検索できます。")
+                            plugin.window.displayToast("Tap the map in visit order. Find a route after adding at least two stops.")
                         }
                     }
                     LocationButton {
                         id: layerToggle
                         checkable: true
                         Layout.fillWidth: true
-                        text: checked ? "レイヤから追加 ▴" : "レイヤから追加 ▾"
+                        text: checked ? "Add from layer ▴" : "Add from layer ▾"
                     }
-                    Label { id: layerLabel; text: "地物を選ぶレイヤ"; visible: layerToggle.checked }
+                    Label { id: layerLabel; text: "Layer for feature selection"; visible: layerToggle.checked }
                     ComboBox {
                         id: layers
                         visible: layerToggle.checked
@@ -786,11 +807,11 @@ Item {
                         model: QfMapLayerModel { project: qgisProject; filters: Qgis.LayerFilters.HasGeometry }
                         textRole: "Name"
                         valueRole: "LayerPointer"
-                        displayText: count ? currentText : "対象のレイヤがありません"
+                        displayText: count ? currentText : "No suitable layers"
                     }
                     LocationButton {
                         visible: layerToggle.checked
-                        text: "レイヤの地物を選択"
+                        text: "Select layer features"
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: !!layers.currentValue && plugin.canAddStop
@@ -801,7 +822,7 @@ Item {
                     }
                     SectionTitle {
                         Layout.topMargin: 8
-                        text: "訪問順（" + plugin.stops.length + " / " + plugin.maxStops + "）"
+                        text: "Visit order (" + plugin.stops.length + " / " + plugin.maxStops + ")"
                     }
                     ColumnLayout {
                         visible: plugin.optimizable
@@ -809,7 +830,7 @@ Item {
                         spacing: 4
                         Label {
                             id: visitOrderLabel
-                            text: "訪問順の優先条件"
+                            text: "Visit order preference"
                         }
                         ComboBox {
                             id: orderChoice
@@ -819,7 +840,7 @@ Item {
                             Accessible.name: visitOrderLabel.text
                             readonly property var criteria: [""].concat(Routes.routeCriteria)
                             model: criteria.map(value => value ? Routes.criterionLabel(value)
-                                : "経路と同じ（" + Routes.criterionLabel(plugin.routeCriterion) + "）")
+                                : "Same as route (" + Routes.criterionLabel(plugin.routeCriterion) + ")")
                             currentIndex: criteria.indexOf(plugin.visitOrderOverride)
                             onActivated: index => plugin.visitOrderOverride = criteria[index]
                         }
@@ -828,7 +849,7 @@ Item {
                             Label {
                                 id: fixedEndLabel
                                 Layout.fillWidth: true
-                                text: "最後の地点を目的地として固定"
+                                text: "Keep last stop as destination"
                                 wrapMode: Text.Wrap
                             }
                             Switch {
@@ -843,9 +864,9 @@ Item {
                             Layout.fillWidth: true
                             wrapMode: Text.Wrap
                             text: plugin.fixedEnd && plugin.stops.length < Routes.minOptimizeStops(true)
-                                ? "目的地を固定する場合は、" + Routes.minOptimizeStops(true) + "地点以上で最適化できます。"
-                                : plugin.fixedEnd ? "出発地と目的地を固定し、経由地を並べ替えます。"
-                                : "出発地を固定し、残りの地点を並べ替えます。"
+                                ? "At least " + Routes.minOptimizeStops(true) + " stops are needed to keep the destination fixed."
+                                : plugin.fixedEnd ? "Keep the origin and destination fixed; reorder the stops in between."
+                                : "Keep the origin fixed; reorder the remaining stops."
                             color: QfTheme.secondaryTextColor
                             font: QfTheme.tipFont
                         }
@@ -853,7 +874,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.minimumHeight: plugin.touchHeight
                             enabled: plugin.canOptimize
-                            text: plugin.optimizing ? "最適化中…" : "訪問順を最適化"
+                            text: plugin.optimizing ? "Optimizing…" : "Optimize order"
                             onClicked: plugin.optimize()
                         }
                         Label {
@@ -865,7 +886,7 @@ Item {
                         LocationButton {
                             visible: !!plugin.undoStops
                             enabled: !plugin.pending
-                            text: "元の順序に戻す"
+                            text: "Restore original order"
                             Layout.minimumHeight: plugin.touchHeight
                             onClicked: plugin.undoOptimize()
                         }
@@ -874,7 +895,7 @@ Item {
                         visible: plugin.reorderable
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: "左の番号を上下にドラッグして並べ替え"
+                        text: "Drag the numbers up or down to reorder."
                         color: QfTheme.secondaryTextColor
                     }
                     Repeater {
@@ -915,8 +936,8 @@ Item {
                     RowLayout {
                         visible: plugin.stops.length > 0
                         enabled: !plugin.pending
-                        LocationButton { text: "末尾の地点を削除"; destructive: true; onClicked: plugin.stops = plugin.stops.slice(0, -1) }
-                        LocationButton { text: "全消去"; destructive: true; onClicked: plugin.stops = [] }
+                        LocationButton { text: "Remove last"; destructive: true; onClicked: plugin.stops = plugin.stops.slice(0, -1) }
+                        LocationButton { text: "Clear all"; destructive: true; onClicked: plugin.stops = [] }
                     }
                 }
             }
@@ -929,7 +950,7 @@ Item {
                     Layout.fillWidth: true
                     visible: !!plugin.pending
                     indeterminate: visible
-                    Accessible.name: plugin.optimizing ? "訪問順を最適化中" : "経路を検索中"
+                    Accessible.name: plugin.optimizing ? "Optimizing visit order" : "Finding route"
                 }
                 Label {
                     Layout.fillWidth: true
@@ -944,11 +965,13 @@ Item {
                     Layout.minimumHeight: 48
                     enabled: !plugin.pending && !plugin.searchHint
                     Accessible.description: plugin.statusText
-                    text: routeRequest.pending ? "経路を検索中…"
-                          : plugin.travelMode.label + "の経路を検索"
-                            + (plugin.routeCriterion ? "（" + Routes.criterionLabel(plugin.routeCriterion) + "）" : "")
+                    text: routeRequest.pending ? "Finding route…"
+                          : "Find route" + (width < 250 ? "\n" : " · ") + plugin.travelMode.label
+                            + (plugin.routeCriterion ? " · " + Routes.criterionLabel(plugin.routeCriterion) : "")
                     topInset: 0
                     bottomInset: 0
+                    leftPadding: 8
+                    rightPadding: 8
                     font: QfTheme.strongTitleFont
                     primary: true
                     onClicked: plugin.search()
@@ -984,8 +1007,8 @@ Item {
             anchors.fill: parent
             spacing: 0
             PanelHeader {
-                title: places.forRoute ? (plugin.needsOrigin ? "出発地を検索" : "目的地を検索") : "POI検索"
-                dismissText: places.forRoute ? "戻る" : "閉じる"
+                title: places.forRoute ? (plugin.needsOrigin ? "Find Origin" : "Find Destination") : "Place Search"
+                dismissText: places.forRoute ? "Back" : "Close"
                 onDismissed: places.close()
             }
             PlaceSearch {
@@ -998,7 +1021,7 @@ Item {
                 searchCenter: plugin.mapCenter
                 gutter: plugin.gutter
                 touchHeight: plugin.touchHeight
-                selectionHint: places.forRoute ? "経路に追加する場所を選択してください。" : "場所を選択すると地図に表示します。"
+                selectionHint: places.forRoute ? "Select a place to add to the route." : "Select a place to show it on the map."
                 onSettingsRequested: settingsPopup.open()
                 onChosen: place => {
                     places.close()
@@ -1015,7 +1038,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            PanelHeader { title: "接続設定"; dismissText: "完了"; primaryDismiss: true; onDismissed: settingsPopup.close() }
+            PanelHeader { title: "Settings"; dismissText: "Done"; primaryDismiss: true; onDismissed: settingsPopup.close() }
             ScrollView {
                 id: settingsForm
                 Layout.fillWidth: true
@@ -1025,7 +1048,7 @@ Item {
                 contentWidth: availableWidth
                 ColumnLayout {
                     width: settingsForm.availableWidth
-                    Label { id: regionLabel; text: "AWS リージョン" }
+                    Label { id: regionLabel; text: "AWS Region" }
                     TextField {
                         id: regionField
                         Layout.fillWidth: true
@@ -1035,7 +1058,7 @@ Item {
                         readonly property bool validRegion: /^[a-z]{2}(-[a-z0-9]+)+-[0-9]+$/.test(text.trim())
                         onTextEdited: plugin.message = ""
                     }
-                    Label { id: keyLabel; text: "Amazon Location API キー" }
+                    Label { id: keyLabel; text: "Amazon Location API key" }
                     TextField {
                         id: keyField
                         Layout.fillWidth: true
@@ -1048,7 +1071,7 @@ Item {
                     Label {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: plugin.connectionHint || "POI検索と経路検索で共通の設定です。"
+                        text: plugin.connectionHint || "These settings apply to place and route searches."
                         color: QfTheme.secondaryTextColor
                     }
                 }
@@ -1062,18 +1085,18 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            PanelHeader { title: "地物を選択"; dismissText: "選択を終了"; primaryDismiss: true; onDismissed: features.close() }
+            PanelHeader { title: "Select Features"; dismissText: "Done"; primaryDismiss: true; onDismissed: features.close() }
             Label {
                 Layout.fillWidth: true
                 Layout.margins: plugin.gutter
                 wrapMode: Text.Wrap
-                text: plugin.atLimit ? "地点数が上限に達しました（" + plugin.maxStops + "地点）。"
-                    : "訪問順に地物をタップ（現在 " + plugin.stops.length + " 地点）"
+                text: plugin.atLimit ? "Stop limit reached (" + plugin.maxStops + ")."
+                    : "Tap features in visit order (" + plugin.stops.length + " added)."
             }
             Label {
                 Layout.leftMargin: plugin.gutter
                 visible: matches.count === 0
-                text: "このレイヤに地物はありません。"
+                text: "There are no features in this layer."
             }
             ListView {
                 Layout.fillWidth: true

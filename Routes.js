@@ -1,10 +1,10 @@
 var travelModes = [
-    { id: "Car", label: "車" },
-    { id: "Pedestrian", label: "徒歩" },
-    { id: "Scooter", label: "スクーター" },
-    { id: "Truck", label: "トラック" },
-    { id: "Transit", label: "公共交通" },
-    { id: "Intermodal", label: "複合移動" }
+    { id: "Car", label: "Car" },
+    { id: "Pedestrian", label: "Walking" },
+    { id: "Scooter", label: "Scooter" },
+    { id: "Truck", label: "Truck" },
+    { id: "Transit", label: "Public transit" },
+    { id: "Intermodal", label: "Intermodal" }
 ]
 
 var routeCriteria = ["ShortestRoute", "FastestRoute"]
@@ -23,7 +23,7 @@ function routeCriterion(mode, preference) {
 }
 
 function criterionLabel(criterion) {
-    return criterion === "ShortestRoute" ? "距離優先" : "時間優先"
+    return criterion === "ShortestRoute" ? "Shortest" : "Fastest"
 }
 
 function stopLimit(mode) {
@@ -41,7 +41,7 @@ function usableStops(stops, mode, min) {
 
 function requestBody(stops, mode, preference) {
     if (!usableStops(stops, mode, 2))
-        throw new Error("選択した移動手段で利用できる地点を指定してください。")
+        throw new Error("Select valid stops for the chosen travel mode.")
     const body = {
         Origin: stops[0].position,
         Destination: stops[stops.length - 1].position,
@@ -62,18 +62,18 @@ function routeWkt(response, body) {
     const route = response.Routes && response.Routes[0]
     if (!route || !Array.isArray(route.Legs) || !route.Legs.length
             || (body.Waypoints && route.Legs.length !== body.Waypoints.length + 1))
-        throw new Error("全区間を通る経路が見つかりませんでした。")
+        throw new Error("No route was found for all legs.")
     const legs = route.Legs.map(leg => {
         const line = leg.Geometry && leg.Geometry.LineString
         if (!Array.isArray(line) || line.length < 2 || !line.every(validPosition))
-            throw new Error("経路の座標を読み取れませんでした。")
+            throw new Error("Could not read the route coordinates.")
         return "(" + line.map(p => p[0] + " " + p[1]).join(",") + ")"
     })
     return "MULTILINESTRING(" + legs.join(",") + ")"
 }
 
 function rejection(failed, status, responseText) {
-    const prefix = failed + "（HTTP " + status + "）。"
+    const prefix = failed + " (HTTP " + status + "). "
     if (status === 400) {
         try {
             const error = JSON.parse(responseText)
@@ -82,9 +82,9 @@ function rejection(failed, status, responseText) {
         } catch (e) {
             // A proxy may return plain text or an empty body.
         }
-        return prefix + "指定した地点と移動手段を確認してください。"
+        return prefix + "Check the stops and travel mode."
     }
-    return prefix + "地点、リージョン、キーの権限を確認してください。"
+    return prefix + "Check the stops, region, and API key permissions."
 }
 
 var optimizePerimeterKm = 500 // OptimizeWaypoints rejects stops inside a bounding box with a longer perimeter.
@@ -95,7 +95,7 @@ function minOptimizeStops(fixedEnd) {
 
 function optimizeBody(stops, mode, fixedEnd, criterion) {
     if (!supportsWaypoints(mode) || !usableStops(stops, mode, minOptimizeStops(fixedEnd)))
-        throw new Error("訪問順を最適化できる移動手段と地点を指定してください。")
+        throw new Error("Select a travel mode and stops that support visit order optimization.")
     const end = fixedEnd ? stops.length - 1 : stops.length
     const body = {
         Origin: stops[0].position,
@@ -114,13 +114,14 @@ function optimizedStops(response, stops, fixedEnd) {
         // The service names the fixed ends "Origin" and "Destination".
         const names = response.ImpedingWaypoints
             .map(w => w && stops[w.Id === "Origin" ? 0 : w.Id === "Destination" ? stops.length - 1 : Number(w.Id)])
-            .filter(Boolean).map(s => "「" + s.label + "」")
-        throw new Error((names.length ? names.join("") + "を通る順序が見つからず、" : "") + "訪問順を最適化できませんでした。")
+            .filter(Boolean).map(s => '"' + s.label + '"')
+        throw new Error("Could not optimize visit order."
+            + (names.length ? " No valid order includes " + names.join(", ") + "." : ""))
     }
     const order = (Array.isArray(response.OptimizedWaypoints) ? response.OptimizedWaypoints : [])
         .map(w => Number(w && w.Id)).filter(i => Number.isInteger(i) && i >= 1 && i < end)
     if (order.length !== end - 1 || order.some((id, i) => order.indexOf(id) !== i))
-        throw new Error("最適化の結果を読み取れませんでした。")
+        throw new Error("Could not read the optimization result.")
     return {
         stops: [stops[0]].concat(order.map(i => stops[i]), stops.slice(end)),
         changed: order.some((id, i) => id !== i + 1),
@@ -129,17 +130,17 @@ function optimizedStops(response, stops, fixedEnd) {
 }
 
 function optimizeRejection(status, stops) {
-    const failed = "訪問順を最適化できませんでした"
+    const failed = "Could not optimize visit order"
     if (status === 403)
-        return failed + "（HTTP 403）。API キーの期限とリージョン、geo-routes:OptimizeWaypoints の許可を確認してください。"
+        return failed + " (HTTP 403). Check the API key's expiration date, region, and geo-routes:OptimizeWaypoints permission."
     if (status !== 400) return rejection(failed, status)
     // The service measures the perimeter its own way, so only a clear excess is reported as the cause.
     const perimeter = Math.round(boundsPerimeterKm(stops.map(s => s.position)))
     return perimeter > optimizePerimeterKm
-        ? failed + "。全地点を囲む範囲の周長が約" + perimeter + " kmで、上限の" + optimizePerimeterKm
-            + " kmを超えています。地点を減らすか、範囲を狭めてください。"
-        : failed + "（HTTP 400）。地点が道路から大きく離れていないか、広い範囲（周長" + optimizePerimeterKm
-            + " km超）に散らばっていないか確認してください。"
+        ? failed + ". The bounding box around all stops has a perimeter of approximately " + perimeter
+            + " km, exceeding the " + optimizePerimeterKm + " km limit. Remove stops or reduce the area."
+        : failed + " (HTTP 400). Check whether stops are far from roads or spread across a wide area (perimeter over "
+            + optimizePerimeterKm + " km)."
 }
 
 // Perimeter of the longitude-latitude box around the positions, with its width taken at the middle latitude.
@@ -156,12 +157,13 @@ function tripSummary(distance, duration) {
     if (!Number.isFinite(distance) || !Number.isFinite(duration)) return ""
     const minutes = Math.max(1, Math.round(duration / 60))
     const hours = Math.floor(minutes / 60)
-    return "（約" + (distance < 1000 ? Math.round(distance) + " m" : (distance / 1000).toFixed(1) + " km")
-        + "・約" + (hours ? hours + "時間" : "") + (hours && minutes % 60 === 0 ? "" : minutes % 60 + "分") + "）"
+    return " (about " + (distance < 1000 ? Math.round(distance) + " m" : (distance / 1000).toFixed(1) + " km")
+        + ", " + (hours ? hours + " hr" : "")
+        + (hours && minutes % 60 === 0 ? "" : (hours ? " " : "") + minutes % 60 + " min") + ")"
 }
 
 function placeResults(response) {
-    if (!Array.isArray(response.ResultItems)) throw new Error("検索結果を読み取れませんでした。")
+    if (!Array.isArray(response.ResultItems)) throw new Error("Could not read the search results.")
     return response.ResultItems.filter(item => item && validPosition(item.Position)).map(item => {
         const address = (item.Address && item.Address.Label) || ""
         const label = item.Title || address

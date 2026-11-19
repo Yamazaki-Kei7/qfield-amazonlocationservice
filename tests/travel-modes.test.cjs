@@ -12,6 +12,13 @@ const legs = stops.slice(1).map((stop, i) => ({
     Geometry: { LineString: [stops[i].position, stop.position] }
 }))
 
+test("travel modes and routing criteria have short English labels", () => {
+    assert.deepEqual(Array.from(routes.travelModes, mode => mode.label),
+        ["Car", "Walking", "Scooter", "Truck", "Public transit", "Intermodal"])
+    assert.equal(routes.criterionLabel("ShortestRoute"), "Shortest")
+    assert.equal(routes.criterionLabel("FastestRoute"), "Fastest")
+})
+
 for (const [mode, criterion] of [
     ["Car", "ShortestRoute"], ["Pedestrian", "FastestRoute"],
     ["Scooter", "FastestRoute"], ["Truck", "ShortestRoute"]
@@ -34,14 +41,33 @@ for (const [mode, criterion] of [
 
 test("route validation failures display the service message when available", () => {
     const detail = "'OptimizeRoutingFor' must not have value ShortestRoute when 'TravelMode' has value Pedestrian."
-    const message = routes.rejection("検索できませんでした", 400, JSON.stringify({ message: detail }))
+    const message = routes.rejection("Could not find a route", 400, JSON.stringify({ message: detail }))
     assert.match(message, /HTTP 400/)
     assert.ok(message.includes(detail))
     for (const reply of ["", "<html>Bad Request</html>", "null"]) {
-        const fallback = routes.rejection("検索できませんでした", 400, reply)
+        const fallback = routes.rejection("Could not find a route", 400, reply)
         assert.match(fallback, /HTTP 400/)
-        assert.doesNotMatch(fallback, /<html>|キーの権限/)
+        assert.match(fallback, /Check the stops and travel mode/)
+        assert.doesNotMatch(fallback, /<html>|permissions/)
     }
+})
+
+test("route and search failures give English guidance", () => {
+    assert.throws(() => routes.requestBody([], "Car"), /valid stops.*travel mode/)
+    assert.throws(() => routes.routeWkt({}, {}), /No route.*all legs/)
+    assert.throws(() => routes.routeWkt({ Routes: [{ Legs: [{ Geometry: {} }] }] }, {}), /route coordinates/)
+    assert.throws(() => routes.placeResults({}), /search results/)
+    assert.match(routes.rejection("Could not find a route", 403, ""), /region.*API key permissions/)
+})
+
+test("place search preserves multilingual names and addresses", () => {
+    const places = routes.placeResults({ ResultItems: [
+        { Title: "東京駅", Address: { Label: "東京都千代田区" }, Position: [139.7671, 35.6812] },
+        { Title: "São Paulo", Address: { Label: "São Paulo" }, Position: [-46.6333, -23.5505] }
+    ] })
+    assert.deepEqual(Array.from(places, place => [place.label, place.address]), [
+        ["東京駅", "東京都千代田区"], ["São Paulo", ""]
+    ])
 })
 
 for (const mode of ["Transit", "Intermodal"]) {

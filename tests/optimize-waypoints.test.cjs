@@ -22,7 +22,7 @@ const tooWide = [[139.7671, 35.6812], [136.9066, 35.1815], [140.8719, 38.2682], 
 // Values built inside the VM context have their own Array prototype.
 const labels = list => Array.from(list, stop => stop.label)
 const waypoints = body => Array.from(body.Waypoints, w => ({ Id: w.Id, Position: w.Position }))
-const unusable = /移動手段と地点/
+const unusable = /travel mode and stops/
 const reply = (ids, extra) => Object.assign({ OptimizedWaypoints: ids.map(Id => ({ Id })), ImpedingWaypoints: [] }, extra)
 
 test("a free end sends every stop after the origin as a numbered waypoint", () => {
@@ -78,14 +78,14 @@ test("a free end reorders every stop after the origin", () => {
     const result = routes.optimizedStops(reply(["Origin", "2", "3", "4", "1"], { Distance: 21938, Duration: 3076 }), stops, false)
     assert.deepEqual(labels(result.stops), ["東京駅", "新宿", "日本橋", "両国", "錦糸町"])
     assert.equal(result.changed, true)
-    assert.equal(result.summary, "（約21.9 km・約51分）")
+    assert.equal(result.summary, " (about 21.9 km, 51 min)")
 })
 
 test("a fixed end keeps the last stop as the destination", () => {
     const result = routes.optimizedStops(reply(["Origin", "2", "3", "1", "Destination"], { Distance: 23645, Duration: 3317 }), stops, true)
     assert.deepEqual(labels(result.stops), ["東京駅", "新宿", "日本橋", "錦糸町", "両国"])
     assert.equal(result.changed, true)
-    assert.equal(result.summary, "（約23.6 km・約55分）")
+    assert.equal(result.summary, " (about 23.6 km, 55 min)")
 })
 
 test("reordering keeps the same stop objects", () => {
@@ -105,7 +105,7 @@ test("an order that is already optimal is reported as unchanged", () => {
 })
 
 test("a reply that does not order every waypoint exactly once is rejected", () => {
-    const unreadable = /読み取れません/
+    const unreadable = /read the optimization result/
     assert.throws(() => routes.optimizedStops(reply(["Origin", "2", "3", "4"]), stops, false), unreadable)
     assert.throws(() => routes.optimizedStops(reply(["Origin", "2", "2", "3", "4"]), stops, false), unreadable)
     assert.throws(() => routes.optimizedStops(reply(["Origin", "2", "3", "4", "1", "1"]), stops, false), unreadable)
@@ -117,12 +117,12 @@ test("a reply that does not order every waypoint exactly once is rejected", () =
 test("stops the service cannot reach are named", () => {
     const blocked = { OptimizedWaypoints: [], ImpedingWaypoints: [{ Id: "2" }, { Id: "Destination" }, { Id: "Origin" }] }
     assert.throws(() => routes.optimizedStops(blocked, stops, true), error => {
-        assert.match(error.message, /「新宿」「両国」「東京駅」/)
-        assert.match(error.message, /最適化できませんでした/)
+        assert.match(error.message, /"新宿", "両国", "東京駅"/)
+        assert.match(error.message, /Could not optimize visit order/)
         return true
     })
-    assert.throws(() => routes.optimizedStops({ ImpedingWaypoints: [{ Id: "Waypoint9" }] }, stops, false), /最適化できませんでした/)
-    assert.throws(() => routes.optimizedStops({ ImpedingWaypoints: [null, { Id: "3" }] }, stops, false), /「日本橋」.*最適化できませんでした/)
+    assert.throws(() => routes.optimizedStops({ ImpedingWaypoints: [{ Id: "Waypoint9" }] }, stops, false), /Could not optimize visit order/)
+    assert.throws(() => routes.optimizedStops({ ImpedingWaypoints: [null, { Id: "3" }] }, stops, false), /Could not optimize visit order.*"日本橋"/)
 })
 
 test("the perimeter around the stops matches what the service accepted and rejected", () => {
@@ -138,25 +138,25 @@ test("a rejected key is told which permission to add", () => {
 
 test("stops spread too widely are told the perimeter and the limit", () => {
     const message = routes.optimizeRejection(400, tooWide.map(position => ({ position })))
-    assert.match(message, /約139\d km/)
-    assert.match(message, /上限の500 km/)
+    assert.match(message, /approximately 139\d km/)
+    assert.match(message, /500 km limit/)
 })
 
 test("another rejected request does not claim the stops are too far apart", () => {
     const nearby = routes.optimizeRejection(400, stops)
     assert.match(nearby, /HTTP 400/)
-    assert.doesNotMatch(nearby, /超えています/)
+    assert.doesNotMatch(nearby, /exceeding/)
     const throttled = routes.optimizeRejection(429, tooWide.map(position => ({ position })))
     assert.match(throttled, /HTTP 429/)
-    assert.doesNotMatch(throttled, /超えています/)
+    assert.doesNotMatch(throttled, /exceeding/)
 })
 
 test("the trip summary uses metres under a kilometre and hours from sixty minutes", () => {
-    assert.equal(routes.tripSummary(850, 300), "（約850 m・約5分）")
-    assert.equal(routes.tripSummary(21938, 3076), "（約21.9 km・約51分）")
-    assert.equal(routes.tripSummary(64000, 5400), "（約64.0 km・約1時間30分）")
-    assert.equal(routes.tripSummary(98000, 7200), "（約98.0 km・約2時間）")
-    assert.equal(routes.tripSummary(40, 20), "（約40 m・約1分）")
+    assert.equal(routes.tripSummary(850, 300), " (about 850 m, 5 min)")
+    assert.equal(routes.tripSummary(21938, 3076), " (about 21.9 km, 51 min)")
+    assert.equal(routes.tripSummary(64000, 5400), " (about 64.0 km, 1 hr 30 min)")
+    assert.equal(routes.tripSummary(98000, 7200), " (about 98.0 km, 2 hr)")
+    assert.equal(routes.tripSummary(40, 20), " (about 40 m, 1 min)")
 })
 
 test("a reply without totals has no trip summary", () => {

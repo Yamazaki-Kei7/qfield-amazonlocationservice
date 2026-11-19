@@ -26,7 +26,7 @@ QtObject {
             pending = null
             timeout.stop()
             if (request.status === 200) loaded(request.responseText)
-            else if (request.status === 0) api.failed("通信できません。接続を確認してください。")
+            else if (request.status === 0) api.failed("Could not connect. Check your connection.")
             else api.rejected(request.status, request.responseText)
         }
         try {
@@ -36,7 +36,7 @@ QtObject {
             request.send(JSON.stringify(body))
         } catch (error) {
             cancel()
-            api.failed("検索を開始できませんでした。")
+            api.failed("Could not start the request.")
         }
     }
 
@@ -46,7 +46,7 @@ QtObject {
         interval: 45000
         onTriggered: {
             api.cancel()
-            api.failed("応答がありません。接続を確認して再検索してください。")
+            api.failed("Request timed out. Check your connection and try again.")
         }
     }
 }

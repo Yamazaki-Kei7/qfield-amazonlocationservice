@@ -1,153 +1,165 @@
 # Amazon Location Service for QField
 
-QField で施設名や住所から場所を探し、地図に表示できます。経路検索では、移動手段を選んで、現在地や任意の出発地から目的地までの経路を地図に表示できます。複数の施設を回るときは、距離または所要時間を優先して訪問順を最適化できます。
+Search for a place or address, then get directions to it from your current location. For fieldwork with multiple stops, choose a travel mode and optimize the visit order for distance or travel time.
 
-## 必要なもの
+## Requirements
 
-- プラグインに対応した QField
-- インターネット接続
-- Amazon Location Service の API キーと、そのキーを作成した AWS リージョン名（例：`ap-northeast-1`）
+- A version of QField that supports plugins
+- An internet connection
+- An Amazon Location Service API key and the AWS Region where it was created (for example, `ap-northeast-1`)
 
-| 使用する機能 | API キーに許可するアクション |
+| Feature | API key action to allow |
 | --- | --- |
-| 施設名・住所からの POI 検索 | `geo-places:SearchText` |
-| 経路検索（全移動手段） | `geo-routes:CalculateRoutes` |
-| 訪問順の最適化 | `geo-routes:OptimizeWaypoints` |
+| Search for places by name or address | `geo-places:SearchText` |
+| Find routes for any travel mode | `geo-routes:CalculateRoutes` |
+| Optimize visit order | `geo-routes:OptimizeWaypoints` |
 
-複数の機能を使う場合は、同じキーに必要なアクションをすべて許可してください。既存の経路検索用キーには、POI 検索を使うなら `geo-places:SearchText` を、訪問順の最適化を使うなら `geo-routes:OptimizeWaypoints` を追加します。[API キーの設定](https://docs.aws.amazon.com/location/latest/developerguide/using-apikeys.html)
+To use more than one feature, allow all the required actions on the same key. For an existing route-search key, add `geo-places:SearchText` for place search and `geo-routes:OptimizeWaypoints` for visit order optimization as needed. See [API key configuration](https://docs.aws.amazon.com/location/latest/developerguide/using-apikeys.html).
 
-## インストール
+## Installation
 
-旧 ZIP（`amazon-location-routes.zip`）から切り替える場合は、先にプラグイン管理画面で旧版を無効にしてください。QField は ZIP のファイル名からインストール先を決めるため、新旧のプラグインが別々に登録されます。
+If you are switching from the old ZIP (`amazon-location-routes.zip`), first disable the old version in Plugin Manager. QField uses the ZIP filename to determine the installation directory, so the old and new plugins are registered separately.
 
-### URL からインストールする（おすすめ）
+### Install from a URL (recommended)
 
-1. QField のサイドダッシュボードを開き、メニューの「Plugin Manager」をタップします。
+1. Open the side dashboard in QField, open its menu, and tap **Plugin Manager**.
 
-   <img src="img/qfield-plugin-manager-menu.png" alt="QField のメニュー。「ブックマーク」と「設定」の間に「Plugin Manager」がある" width="360">
+   <img src="img/qfield-plugin-manager-menu.png" alt="QField menu with Plugin Manager between Bookmarks and Settings" width="360">
 
-2. プラグイン管理画面の下部にある「URL からプラグインをインストール」をタップします。入力欄に次の URL を貼り付け、「OK」を押します。
+2. At the bottom of Plugin Manager, tap **Install plugin from URL**. Paste the following URL into the field and tap **OK**.
 
    ```text
    https://raw.githubusercontent.com/Yamazaki-Kei7/qfield-amazonlocationservice/main/amazon-location-service.zip
    ```
 
-   <img src="img/plugin-install-url-dialog.png" alt="Install Plugin from URL ダイアログ。中央に URL 入力欄、右下に OK ボタンがある" width="360">
+   <img src="img/plugin-install-url-dialog.png" alt="Install Plugin from URL dialog with a URL field and an OK button" width="360">
 
-3. 「ローカルプラグイン」タブで <img src="Arch_Amazon-Location-Service_32.svg" alt="" width="24">「Amazon Location Service」の右側にあるスイッチをオンにします。実行の許可を求めるダイアログが出たら許可してください。
+3. On the **Local Plugins** tab, turn on the switch beside **Amazon Location Service**. If prompted to allow the plugin to run, grant permission.
 
-プラグイン管理画面の場所やボタンの表記は QField のバージョンによって異なります。見つからない場合は [QField のプラグインのドキュメント](https://docs.qfield.org/how-to/advanced-how-tos/plugins/)を確認してください。
+The location and wording of Plugin Manager controls can vary between QField versions. If you cannot find them, see the [QField plugin documentation](https://docs.qfield.org/how-to/advanced-how-tos/plugins/).
 
-### ZIP を手動で配置する
+### Install the ZIP manually
 
-URL からインストールできない環境では、[amazon-location-service.zip](https://raw.githubusercontent.com/Yamazaki-Kei7/qfield-amazonlocationservice/main/amazon-location-service.zip) をダウンロードして展開し、QField のアプリデータ内に `plugins/amazon-location-service/main.qml` がある構成で配置します。QField を再起動し、プラグイン管理画面で有効にしてください。
+If installation from a URL is unavailable, download [amazon-location-service.zip](https://raw.githubusercontent.com/Yamazaki-Kei7/qfield-amazonlocationservice/main/amazon-location-service.zip), extract it, and place it in QField's application data so that the file `plugins/amazon-location-service/main.qml` exists. Restart QField and enable the plugin in Plugin Manager.
 
-## 使い方
+## Usage
 
-### 接続設定
+### Connection settings
 
-地図右上のサービスボタン <img src="Arch_Amazon-Location-Service_32.svg" alt="Amazon Location Service" width="24"> をタップすると、その下に「POI検索」（地図ピン）と「経路検索」（経路線）の丸いボタンが縦に並びます。サービスボタンをもう一度タップすると、2つのボタンを収納できます。検索ボタンを選ぶと、その検索画面が開き、地図上のボタンは収納されます。初回は検索画面の「接続設定」で AWS リージョンと API キーを入力して「完了」を押します。設定は両方の機能で共通です。
+Tap the Amazon Location Service button at the upper right of the map. The pin opens **Place Search** and the route line opens **Route Search**. Tap the service button again to close the menu.
 
-<img src="img/amazon-location-menu.png" alt="サービスボタンの下にPOI検索と経路検索の丸いボタンを展開した状態" width="80">
+<img src="img/amazon-location-menu.png" alt="Expanded service menu with the Place Search and Route Search buttons" width="96">
 
-### 場所を探して地図に表示する
+In either search screen, tap **Settings**, enter the **AWS Region** where you created your key and the **Amazon Location API key**, then tap **Done**. Both searches use these settings.
 
-サービスボタン → 「POI検索」を選び、施設名・住所・「コンビニ」などのキーワードを入力して「検索」を押します。地図の中心に近い候補が優先されます。施設名と住所を確認して候補を選ぶと、地図がその場所に移動してマーカーが付きます。「候補に戻る」で別の場所を見比べられます。
+<img src="img/route-connection-settings.png" alt="Settings dialog with fields for the AWS Region and Amazon Location API key" width="360">
 
-<img src="img/poi-search-results.png" alt="POI検索画面。図書館の検索結果に施設名と住所が並ぶ。表示内容は操作説明用のサンプル" width="360">
+### Find a place and show it on the map
 
-地図で「現在地からの経路」を押すと、現在地を出発地、表示中の場所を目的地として経路画面が開きます。測位していない場合は「ここへの経路」を押して出発地を選んでください。すでに訪問順がある場合は「目的地として追加」でその末尾に追加できます。
+Open the service menu and select **Place Search**. Enter a place name, address, or keyword such as `library`, then tap **Search**. Results near the map center are prioritized. Review the names and addresses, then select a result to move the map to that place and show a marker. Tap **Back to results** to compare another place.
 
-### 現在地から目的地までの経路を検索する
+The screenshot shows sample results for a library search.
 
-1. QField の測位をオンにして、サービスボタン → 「経路検索」を開きます。「移動手段」で車・徒歩・スクーター・トラック・公共交通・複合移動のアイコンを1つ選び、「現在地を出発地にする」を押します。初期選択は車です。現在地は押した時点の位置で固定されます。
-2. 「目的地をPOI検索」で施設名や住所を検索し、候補をタップします。目的地を先に選んだ場合は、次に現在地・地図・レイヤ・POI検索から出発地を追加できます。
-3. 地点を確認し、画面下部の検索ボタンを押します。車・徒歩・スクーター・トラックでは、2〜25地点を指定した順に巡ります。車・トラックでは移動手段の下で「距離優先」（初期値）と「時間優先」を選べます。徒歩・スクーターは時間優先です。公共交通と複合移動は、出発地と目的地の2地点を指定し、現在時刻に出発する経路を検索します。複合移動では徒歩、公共交通、タクシーなどを組み合わせます。[AWSの移動手段一覧](https://docs.aws.amazon.com/location/latest/developerguide/concepts-how.html)
+<img src="img/poi-search-results.png" alt="Example place search results showing library names and addresses" width="360">
 
-<img src="img/travel-modes.png" alt="経路検索画面。車モードで経路の優先条件に時間優先を選択している" width="320">
-<img src="img/travel-modes-dark.png" alt="ダークモードの経路検索画面。選択中の車は水色、検索ボタンはオレンジ" width="320">
+On the map, tap **Route from current location** to open Route Search with your current location as the origin and the selected place as the destination. If your location is unavailable, tap **Route to here** and choose an origin. If you already have a visit order, use **Add as destination** to add the place at the end.
 
-### 地図やレイヤから地点を追加する
+### Find a route from your current location
 
-**地図から追加する場合**は「地図をタップして地点を追加」を押し、出発地から順に地図をタップします。下の例では、黒い丸の **1 が出発地、2 が経由地、3 が目的地**です。
+1. Turn on positioning in QField, then open the service menu and select **Route Search**. Under **Travel mode**, choose Car, Walking, Scooter, Truck, Public transit, or Intermodal, then tap **Use current location as origin**. Car is selected by default. The origin is fixed at your location when you tap the button.
+2. Tap **Search for destination**, search for a place name or address, and select a result. If you choose the destination first, you can then add the origin from your current location, the map, a layer, or place search.
+3. Check the stops and tap the **Find route** button at the bottom. Car, Walking, Scooter, and Truck visit 2–25 stops in the specified order. For Car and Truck, choose **Shortest** (the default) or **Fastest** under **Route preference**. Walking and Scooter use the fastest route. Public transit and Intermodal use two stops, an origin and a destination, and search for a departure at the current time. Intermodal routes can combine walking, public transit, taxis, and other modes. See [AWS travel modes](https://docs.aws.amazon.com/location/latest/developerguide/concepts-how.html).
 
-<img src="img/map-stop-selection.png" alt="地図に 1、2、3 の地点番号が付き、右上の経路ボタンに地点数の 3、下部に「経路を検索」が表示されている" width="360">
+<img src="img/travel-modes.png" alt="Route search with Car selected and Fastest selected as the route preference" width="320">
+<img src="img/travel-modes-dark.png" alt="Route search in dark mode, with Car selected and an orange route search button" width="320">
 
-2 地点以上を追加したら、その順でよければ地図下部の「経路を検索」を押すと経路が表示されます。「接続設定を入力」と表示された場合は、タップしてリージョンとキーを入力できます。
+### Add stops from the map or a layer
 
-**レイヤから追加する場合**は、経路検索画面で「レイヤから追加」を開き、「地物を選ぶレイヤ」で対象のレイヤを選び、「レイヤの地物を選択」を押します。下の一覧で地物名を訪問順にタップすると、画面上部の地点数が増えます。必要な地点を追加したら、右上の「選択を終了」を押して訪問順を確認します。地図で指定した地点と組み合わせることもできます。
+**To add stops from the map**, tap **Add stops from map**, then tap the map in visit order, starting with the origin. In the example below, the black markers indicate **1 as the origin, 2 as a waypoint, and 3 as the destination**.
 
-<img src="img/layer-feature-selection.png" alt="「地物を選択」画面。「現在 0 地点」の下に test、test2、test3 が並び、右上に「選択を終了」がある" width="360">
+<img src="img/map-stop-selection.png" alt="Map with numbered stops 1, 2, and 3, a stop count on the service button, and a route search button at the bottom" width="360">
 
-### 訪問順を確認して検索する
+After adding at least two stops, tap **Find route** at the bottom of the map to search in that order. If **Enter settings** appears instead, tap it to enter the Region and API key.
 
-地図で地点を追加している間は、サービスボタンに地点数が表示されます。サービスボタン → 「経路検索」で経路検索画面に戻り、「訪問順」の一覧で上から出発地、経由地、目的地の順に並んでいることを確認します。
+**To add stops from a layer**, open **Add from layer** in Route Search, choose a layer under **Layer for feature selection**, and tap **Select layer features**. Tap the feature names in visit order. The count at the top shows how many stops you have added. When finished, tap **Done** at the upper right and check the visit order. You can combine layer features with stops selected on the map.
 
-<img src="img/visit-order-editor.png" alt="スクーターで3地点を巡る画面。訪問順は距離優先、下部の経路検索は時間優先になっている" width="360">
+The feature names in the image below are sample data.
 
-順番を変えるには、カード左端の番号を上下にドラッグするか、右端の「↑」「↓」で 1 つずつ移動します。「末尾の地点を削除」を押すと一覧の最後の地点が消えます。「全消去」を押すと地点と経路がすべて消えます。
+<img src="img/layer-feature-selection.png" alt="Select Features screen listing a survey office, a water sampling site, and an equipment depot" width="360">
 
-訪問順が決まったら、画面下部の検索ボタンを押します。移動手段を切り替えて再検索するときも、登録した地点と訪問順は保持されます。
+### Review the visit order and find a route
 
-### 訪問順を最適化する
+While you add stops from the map, the service button shows the stop count. Open the service menu, select **Route Search**, and check that **Visit order** lists the origin first, followed by any waypoints and then the destination.
 
-車・徒歩・スクーター・トラックで 3 地点以上を登録すると、「訪問順」の見出しの下に「訪問順を最適化」が表示されます。初期設定は「経路と同じ」で、経路検索の優先条件が訪問順にも適用されます。訪問順だけ変えたいときは「訪問順の優先条件」で「距離優先」または「時間優先」を選び、「訪問順を最適化」を押します。1 番目の地点は出発地に固定されます。たとえば徒歩でも、訪問順は距離優先、各区間の経路は時間優先にできます。[AWS の経路と訪問順の最適化](https://docs.aws.amazon.com/location/latest/developerguide/optimize-route-waypoint.html#optimize-routing)
+<img src="img/visit-order-editor.png" alt="Three scooter stops in visit order, with Shortest selected for the order and Fastest for the route" width="360">
 
-- **最後に行く場所が決まっている場合**は、その地点を一覧の最後に置き、「最後の地点を目的地として固定」をオンにしてから最適化します。出発地と目的地はそのままで、間の経由地だけが並び替わります。この場合は 4 地点以上が必要です。
-- **出発地に戻る場合**は、出発地と同じ場所を最後の地点として追加し、「最後の地点を目的地として固定」をオンにしてから最適化します。
-- 最適化が終わると、総距離と所要時間の目安が表示されます。並び替わった順序は一覧と地図の地点番号で確認でき、ドラッグや「↑」「↓」で手直しもできます。「元の順序に戻す」を押すと、最適化する前の順序に戻ります。地点を追加・削除・手動で並べ替えたあとは戻せません。
-- 最適化で変わるのは訪問順だけです。経路を地図に表示するには、続けて画面下部の検索ボタンを押してください。
+To change the order, drag the number at the left of a stop card up or down, or use the **↑** and **↓** buttons at the right to move it one position. **Remove last** removes the last stop. **Clear all** removes all stops and the displayed route.
 
-### 地図で経路を確認する
+When the order is ready, tap the **Find route** button at the bottom. Your stops and their order are retained if you change the travel mode and search again.
 
-検索が完了すると地図に戻り、経路全体が表示されます。下の例では、青い線が **1 → 2 → 3** の順に道路を通る経路です。経路と地点番号は地図上の一時表示で、プロジェクトの地物は変更されません。
+### Optimize the visit order
 
-<img src="img/driving-route-result.png" alt="検索結果の地図。出発地 1 から経由地 2 を通り、目的地 3 に至る車の経路が青い線で表示されている" width="360">
+With Car, Walking, Scooter, or Truck and at least three stops, **Optimize order** appears under **Visit order**. By default, **Same as route** applies the route preference to the visit order. To choose a different preference for the visit order, select **Shortest** or **Fastest** under **Visit order preference**, then tap **Optimize order**. The first stop remains the origin. For example, even when walking, you can optimize the stop order for distance while each route leg uses the fastest route. See [AWS route and waypoint optimization](https://docs.aws.amazon.com/location/latest/developerguide/optimize-route-waypoint.html#optimize-routing).
 
-### 知っておくと便利なこと
+- **To keep a particular destination**, put it last in the list and enable **Keep last stop as destination** before optimizing. The origin and destination remain fixed while the intermediate stops are reordered. At least four stops are required.
+- **To return to the origin**, add the same location as the last stop and enable **Keep last stop as destination** before optimizing.
+- After optimization, an estimated total distance and travel time are displayed. Review the new order in the list and the numbered map markers, and adjust it with drag or **↑** and **↓** if needed. **Restore original order** restores the order from before optimization. It is no longer available after you add, remove, or manually reorder stops.
+- Optimization changes the visit order only. Tap the **Find route** button at the bottom to display the route on the map.
 
-- 検索ボタンが押せないときは、ボタンの上の案内を確認してください。公共交通や複合移動に切り替えたときに3地点以上ある場合は、2地点に減らすか、経由地を使える移動手段を選んでください。
-- 地物で指定した場合、点はその位置、線・面・マルチパート地物は重心を使います。建物の出入口など特定の位置から検索したいときは、地図をタップして指定してください。
-- 地点の追加・並べ替え・削除をすると、表示済みの経路は消えます。訪問順の最適化で順序が変わった場合も同じです。新しい順序でもう一度検索してください。
-- 訪問順の最適化は、全地点を囲む範囲の周長が 500 km を超えると使えません。その場合は、地点を減らすか、手動で並べ替えて経路を検索してください。
-- 別のプロジェクトを開くと、POI のマーカー、地点と経路はクリアされます。
-- API キーは端末に保存しません。QField を再起動したときは入力し直してください。
+### View the route on the map
 
-## うまくいかないとき
+Once the search completes, the map displays the entire route. In the example below, the blue line follows roads in the order **1 → 2 → 3**. The route and numbered stops appear as temporary overlays on your project map.
 
-| 表示・症状 | 確認すること |
+<img src="img/driving-route-result.png" alt="Map with a blue driving route from origin 1 through waypoint 2 to destination 3" width="360">
+
+### Useful details
+
+- If the route search button is disabled, check the guidance above it. If switching to Public transit or Intermodal leaves three or more stops, reduce the list to two stops or choose a mode that supports waypoints.
+- A point feature contributes its location. For lines, polygons, and multipart features, the plugin uses the centroid. To search from a specific location, such as a building entrance, select it on the map.
+- Adding, reordering, or removing stops clears a displayed route. Changing the order through optimization does the same. Search again to display the route for the new order.
+- Visit order optimization cannot be used when the perimeter of the bounding box around all stops exceeds 500 km. Reduce the stops or reorder them manually and search for a route.
+- Opening a different project clears the place marker, stops, and route.
+- The plugin keeps the API key in memory for the current session. Enter it again after restarting QField.
+
+## Troubleshooting
+
+| Message or symptom | What to check |
 | --- | --- |
-| 地図右上にサービスボタンが出ない | プラグイン管理画面でスイッチがオンになっているか、実行を許可したかを確認します。 |
-| POI検索で HTTP 403 が表示される | キーの期限とリージョン、および `geo-places:SearchText` の許可を確認します。 |
-| 現在地を追加できない | QField と端末の位置情報設定を確認し、有効な測位結果を待ちます。地図・レイヤ・POI検索からも出発地を指定できます。 |
-| 「通信できません。接続を確認してください。」 | インターネット接続と、リージョン名の入力ミスがないかを確認します。 |
-| 経路検索で HTTP 400 が表示される | エラーに続く AWS のメッセージで、どの地点や検索条件が拒否されたかを確認します。 |
-| 経路検索で HTTP 403 が表示される | API キーが正しく有効期限内か、`geo-routes:CalculateRoutes` を許可しているか、キーを作成したリージョンを入力しているかを確認します。 |
-| 「訪問順を最適化できませんでした（HTTP 403）。」 | API キーに `geo-routes:OptimizeWaypoints` を許可しているか確認します。経路検索ができるキーでも、最適化には別の許可が必要です。 |
-| 「訪問順を最適化できませんでした。全地点を囲む範囲の周長が約…kmで、上限の500 kmを超えています。」 | 地点が広い範囲に散らばっています。地点を減らすか、近い範囲の地点だけにして最適化します。 |
-| 「「…」を通る順序が見つからず、訪問順を最適化できませんでした。」 | 表示された地点に、選んだ移動手段で到達できるか確認します。道路から大きく離れた地点は、地図をタップして道路の近くに指定し直してください。 |
-| 「全区間を通る経路が見つかりませんでした。」 | 選んだ移動手段で各地点に到達できるか確認してください。公共交通や複合移動の対応範囲は地域や交通事業者によって異なります。 |
-| 「応答がありません。接続を確認して再検索してください。」 | 45 秒以内に応答がなかった場合に表示されます。通信環境のよい場所で再検索します。 |
+| The service button does not appear at the upper right of the map | Check that the plugin is enabled in Plugin Manager and that you allowed it to run. |
+| Place Search returns HTTP 403 | Check the key's expiration, Region, and `geo-places:SearchText` permission. |
+| Cannot add the current location | Check location settings in QField and on the device, and wait for a valid position fix. You can also choose an origin from the map, a layer, or place search. |
+| “Could not connect. Check your connection.” | Check your internet connection and the spelling of the Region. |
+| Route search returns HTTP 400 | Check the AWS message following the error to see which stops or search parameters were rejected. |
+| Route search returns HTTP 403 | Check that the API key is valid and unexpired, that it allows `geo-routes:CalculateRoutes`, and that the Region matches the one in which the key was created. |
+| “Could not optimize visit order (HTTP 403).” | Allow `geo-routes:OptimizeWaypoints` on the API key. Optimization requires a separate permission even if route search works. |
+| “Could not optimize visit order. The bounding box ... exceeding the 500 km limit.” | The stops are spread over too large an area. Remove stops or optimize only stops in a smaller area. |
+| “Could not optimize visit order. No valid order includes ...” | Check whether the selected travel mode can reach the named stops. If a stop is far from a road, tap the map to choose a point closer to one. |
+| “No route was found for all legs.” | Check whether the selected travel mode can reach each stop. Coverage for Public transit and Intermodal varies by region and transit operator. |
+| “Request timed out. Check your connection and try again.” | No response was received within 45 seconds. Retry where the network connection is better. |
 
-## 注意事項
+## Costs and privacy
 
-- POI 検索、経路検索、訪問順の最適化は Amazon Location Service の利用料金の対象です。詳しくは[料金ページ](https://aws.amazon.com/location/pricing/)を確認してください。
-- POI 検索は入力した検索語と地図中心の座標、経路検索と訪問順の最適化は指定した各地点の座標を、API キーとともに Amazon Location Service に送信します。地点の名前は送信しません。[SearchText の仕様](https://docs.aws.amazon.com/location/latest/APIReference/API_geoplaces_SearchText.html)・[CalculateRoutes の仕様](https://docs.aws.amazon.com/location/latest/APIReference/API_CalculateRoutes.html)・[OptimizeWaypoints の仕様](https://docs.aws.amazon.com/location/latest/APIReference/API_OptimizeWaypoints.html)
-- 訪問順の最適化は、経路検索とは別に、「訪問順を最適化」を押すたびに課金されます。スクーターを選んだ場合と、地点が広い範囲（全地点を囲む範囲が 200 km 超）に及ぶ場合は Premium 料金の対象です。
-- 複合移動は Premium 料金の対象です。[経路検索の料金区分](https://docs.aws.amazon.com/location/latest/developerguide/routes-pricing.html)
+- Place search, route search, and visit order optimization are subject to Amazon Location Service charges. See [AWS pricing](https://aws.amazon.com/location/pricing/).
+- Place search sends your query and the coordinates of the map center to Amazon Location Service with the API key. Route search and visit order optimization send the coordinates of the selected stops with the key. Stop names stay on your device. See the [SearchText](https://docs.aws.amazon.com/location/latest/APIReference/API_geoplaces_SearchText.html), [CalculateRoutes](https://docs.aws.amazon.com/location/latest/APIReference/API_CalculateRoutes.html), and [OptimizeWaypoints](https://docs.aws.amazon.com/location/latest/APIReference/API_OptimizeWaypoints.html) specifications.
+- Each **Optimize order** request is billed separately from route search. Scooter optimization and optimization with a bounding-box perimeter over 200 km are subject to Premium pricing.
+- Intermodal route searches are subject to Premium pricing. See [AWS route pricing categories](https://docs.aws.amazon.com/location/latest/developerguide/routes-pricing.html).
 
-## 開発者向け
+## Development
 
-配布用の ZIP は、このディレクトリで次のコマンドを実行して作成します。
+Run this command in the project directory to build the distribution ZIP.
 
 ```sh
 zip amazon-location-service.zip main.qml PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg LICENSE
 ```
 
-URL からのインストールでは `main` ブランチの `amazon-location-service.zip` がそのまま配布されます。ソースを変更したら、`metadata.txt` の `version` を更新し、ZIP を作り直してコミットしてください。
+Installation from a URL distributes `amazon-location-service.zip` directly from the `main` branch. After changing the source, update `version` in `metadata.txt`, rebuild the ZIP, and commit it.
 
-## ライセンス
+## Map credits
 
-プラグインのライセンスは同梱の [LICENSE](LICENSE)（GNU GPL v2）を参照してください。
+The example field project uses aerial imagery from the Geospatial Information Authority of Japan. [GSI tile catalog](https://maps.gsi.go.jp/development/ichiran.html#seamlessphoto).
 
-プラグインのアイコンには、AWS が配布する Amazon Location Service のアーキテクチャアイコンを使用しています。[AWS Architecture Icons](https://aws.amazon.com/architecture/icons/)
+## License
+
+The plugin is distributed under the [GNU General Public License v2](LICENSE).
+
+The plugin icon uses the Amazon Location Service architecture icon distributed by AWS. See [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/).

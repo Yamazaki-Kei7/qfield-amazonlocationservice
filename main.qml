@@ -52,7 +52,7 @@ Item {
     readonly property bool canAddStop: !atLimit && !pending
     readonly property bool reorderable: stops.length > 1
     readonly property bool optimizable: Routes.supportsWaypoints(travelMode.id)
-        && stops.length >= Routes.minOptimizeStops(false) && stops.length <= maxStops
+        && stops.length >= Routes.minOptimizeStops(false)
     readonly property bool canOptimize: optimizable && stops.length >= Routes.minOptimizeStops(fixedEnd)
         && !connectionHint && !pending
     readonly property string statusText: message || searchHint
@@ -92,6 +92,11 @@ Item {
         return [p.x, p.y]
     }
 
+    function toMapCrs(position) {
+        const p = QfGeometryUtils.point(position[0], position[1])
+        return QfGeometryUtils.reprojectPoint(p, wgs84, canvas.mapSettings.destinationCrs)
+    }
+
     function addStop(point, crs, label) {
         addPosition(toWgs84(point, crs), label)
     }
@@ -127,8 +132,7 @@ Item {
 
     function showPlace(place) {
         preview = place
-        const p = QfGeometryUtils.point(place.position[0], place.position[1])
-        canvas.mapSettings.setCenter(QfGeometryUtils.reprojectPoint(p, wgs84, canvas.mapSettings.destinationCrs), true)
+        canvas.mapSettings.setCenter(toMapCrs(place.position), true)
     }
 
     function openPlaces(forRoute) {
@@ -160,13 +164,9 @@ Item {
         if (!stops.length) needsOrigin = false
         if (stopRows) stopRows.dragIndex = -1
         undoStops = null
-        optimizeNote = ""
         clearRoute()
     }
-    onTravelModeChanged: {
-        optimizeNote = ""
-        clearRoute()
-    }
+    onTravelModeChanged: clearRoute()
     onFixedEndChanged: optimizeNote = ""
 
     function clearRoute() {
@@ -174,6 +174,7 @@ Item {
         optimizeRequest.cancel()
         route.geometryWrapper.clear()
         message = ""
+        optimizeNote = ""
     }
 
     onMessageChanged: {
@@ -186,8 +187,7 @@ Item {
         const bounds = QfGeometryUtils.boundingBox(projected)
         // A selected stop can be outside the route when the service snaps it to a road.
         for (const stop of stops) {
-            const point = QfGeometryUtils.point(stop.position[0], stop.position[1])
-            const p = QfGeometryUtils.reprojectPoint(point, wgs84, settings.destinationCrs)
+            const p = toMapCrs(stop.position)
             bounds.xMinimum = Math.min(bounds.xMinimum, p.x)
             bounds.xMaximum = Math.max(bounds.xMaximum, p.x)
             bounds.yMinimum = Math.min(bounds.yMinimum, p.y)
@@ -264,7 +264,7 @@ Item {
         region: plugin.region
         apiKey: plugin.apiKey
         onFailed: reason => plugin.message = reason
-        onRejected: status => plugin.message = "検索できませんでした（HTTP " + status + "）。地点、リージョン、キーの権限を確認してください。"
+        onRejected: status => plugin.message = Routes.rejection("検索できませんでした", status)
     }
 
     LocationRequest {

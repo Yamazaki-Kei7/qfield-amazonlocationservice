@@ -20,8 +20,12 @@ function validPosition(p) {
         && Number.isFinite(p[1]) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90
 }
 
+function usableStops(stops, mode, min) {
+    return stops.length >= min && stops.length <= stopLimit(mode) && stops.every(s => validPosition(s.position))
+}
+
 function requestBody(stops, mode) {
-    if (stops.length < 2 || stops.length > stopLimit(mode) || !stops.every(s => validPosition(s.position)))
+    if (!usableStops(stops, mode, 2))
         throw new Error("選択した移動手段で利用できる地点を指定してください。")
     const body = {
         Origin: stops[0].position,
@@ -52,6 +56,10 @@ function routeWkt(response, body) {
     return "MULTILINESTRING(" + legs.join(",") + ")"
 }
 
+function rejection(failed, status) {
+    return failed + "（HTTP " + status + "）。地点、リージョン、キーの権限を確認してください。"
+}
+
 var optimizePerimeterKm = 500 // OptimizeWaypoints rejects stops inside a bounding box with a longer perimeter.
 
 function minOptimizeStops(fixedEnd) {
@@ -59,8 +67,7 @@ function minOptimizeStops(fixedEnd) {
 }
 
 function optimizeBody(stops, mode, fixedEnd) {
-    if (!supportsWaypoints(mode) || stops.length < minOptimizeStops(fixedEnd) || stops.length > stopLimit(mode)
-            || !stops.every(s => validPosition(s.position)))
+    if (!supportsWaypoints(mode) || !usableStops(stops, mode, minOptimizeStops(fixedEnd)))
         throw new Error("訪問順を最適化できる移動手段と地点を指定してください。")
     const end = fixedEnd ? stops.length - 1 : stops.length
     const body = {
@@ -98,8 +105,7 @@ function optimizeRejection(status, stops) {
     const failed = "訪問順を最適化できませんでした"
     if (status === 403)
         return failed + "（HTTP 403）。API キーの期限とリージョン、geo-routes:OptimizeWaypoints の許可を確認してください。"
-    if (status !== 400)
-        return failed + "（HTTP " + status + "）。地点、リージョン、キーの権限を確認してください。"
+    if (status !== 400) return rejection(failed, status)
     // The service measures the perimeter its own way, so only a clear excess is reported as the cause.
     const perimeter = Math.round(boundsPerimeterKm(stops.map(s => s.position)))
     return perimeter > optimizePerimeterKm

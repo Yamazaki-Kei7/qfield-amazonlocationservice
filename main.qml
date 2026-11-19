@@ -224,7 +224,6 @@ Item {
             x: serviceButton.width - width
             y: serviceButton.height
             padding: 6
-            spacing: 4
             modal: false
             closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
 
@@ -242,6 +241,10 @@ Item {
                 icon.source: QfTheme.getThemeVectorIcon("ic_baseline_search_white")
                 enabled: !plugin.pending
                 onTriggered: plugin.openPlaces(false)
+            }
+            MenuSeparator {
+                verticalPadding: 0
+                contentItem: Item { implicitHeight: plugin.gutter / 2 }
             }
             SearchMenuItem {
                 text: "経路検索"

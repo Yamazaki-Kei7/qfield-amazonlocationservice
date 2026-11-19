@@ -100,11 +100,11 @@ Item {
         return QfGeometryUtils.reprojectPoint(p, wgs84, canvas.mapSettings.destinationCrs)
     }
 
-    function addStop(point, crs, label) {
-        addPosition(toWgs84(point, crs), label)
+    function addStop(point, crs, label, featureKey = "") {
+        addPosition(toWgs84(point, crs), label, false, featureKey)
     }
 
-    function addPosition(position, label, asDestination = false) {
+    function addPosition(position, label, asDestination = false, featureKey = "") {
         if (pending) return
         if (atLimit) {
             window.displayToast(travelMode.label + " supports up to " + maxStops + " stops.")
@@ -116,7 +116,7 @@ Item {
             window.displayToast("Could not get coordinates for this stop.")
             return
         }
-        const stop = { position: coordinates, label: label }
+        const stop = { position: coordinates, label: label, featureKey: featureKey }
         if (asDestination && (!stops.length || needsOrigin)) {
             needsOrigin = true
             stops = [stop]
@@ -161,6 +161,12 @@ Item {
         const stop = reordered.splice(from, 1)[0]
         reordered.splice(to, 0, stop)
         stops = reordered
+    }
+
+    function stopRole(index) {
+        if (needsOrigin) return "Destination"
+        if (index === 0) return "Origin"
+        return index === stops.length - 1 ? "Destination" : "Stop"
     }
 
     onStopsChanged: {
@@ -538,6 +544,18 @@ Item {
         font: QfTheme.strongResultFont
     }
 
+    component CircleBadge: Label {
+        id: badge
+        property color fill
+        property int minimumSize: 26
+        font: QfTheme.strongResultFont
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        Layout.preferredWidth: Math.max(minimumSize, implicitWidth + 8, implicitHeight)
+        Layout.preferredHeight: Layout.preferredWidth
+        background: Rectangle { radius: height / 2; color: badge.fill }
+    }
+
     component MoveButton: LocationButton {
         required property int stopIndex
         required property int step
@@ -561,8 +579,6 @@ Item {
         id: card
         required property int index
         readonly property var stop: plugin.stops[index]
-        readonly property string roleLabel: plugin.needsOrigin ? "Destination" : index === 0 ? "Origin" :
-            index === plugin.stops.length - 1 ? "Destination" : "Stop"
         Layout.fillWidth: true
         Layout.minimumWidth: 0
         Layout.topMargin: 4
@@ -608,16 +624,11 @@ Item {
                     id: gripLabels
                     anchors.centerIn: parent
                     spacing: 2
-                    Label {
+                    CircleBadge {
                         text: card.index + 1
-                        font: QfTheme.strongResultFont
                         color: "white"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                        fill: Colors.ink
                         Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: Math.max(26, implicitWidth + 8, implicitHeight)
-                        Layout.preferredHeight: Layout.preferredWidth
-                        background: Rectangle { radius: height / 2; color: Colors.ink }
                     }
                     Label {
                         visible: plugin.reorderable
@@ -635,7 +646,7 @@ Item {
                 Label {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
-                    text: card.roleLabel
+                    text: plugin.stopRole(card.index)
                     wrapMode: Text.Wrap
                     color: QfTheme.secondaryTextColor
                     font: QfTheme.tipFont
@@ -814,7 +825,7 @@ Item {
                         text: "Select layer features"
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
-                        enabled: !!layers.currentValue && plugin.canAddStop
+                        enabled: !!layers.currentValue && !plugin.pending
                         onClicked: {
                             matches.setFeatures(layers.currentValue, "")
                             features.open()
@@ -1081,17 +1092,45 @@ Item {
 
     RoutePopup {
         id: features
+        readonly property var visitsByFeature: {
+            const visits = {}
+            plugin.stops.forEach((stop, index) => {
+                if (!stop.featureKey) return
+                if (!visits[stop.featureKey]) visits[stop.featureKey] = []
+                visits[stop.featureKey].push(index + 1)
+            })
+            return visits
+        }
         onClosed: matches.clear()
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
             PanelHeader { title: "Select Features"; dismissText: "Done"; primaryDismiss: true; onDismissed: features.close() }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: plugin.gutter
+                Layout.rightMargin: plugin.gutter
+                Layout.topMargin: plugin.gutter
+                Label {
+                    Layout.fillWidth: true
+                    text: layers.currentText
+                    textFormat: Text.PlainText
+                    font: QfTheme.strongResultFont
+                    wrapMode: Text.Wrap
+                }
+                Label {
+                    text: plugin.stops.length + " / " + plugin.maxStops + " route stops"
+                    font: QfTheme.tipFont
+                    color: QfTheme.secondaryTextColor
+                }
+            }
             Label {
                 Layout.fillWidth: true
                 Layout.margins: plugin.gutter
+                Layout.topMargin: 4
                 wrapMode: Text.Wrap
                 text: plugin.atLimit ? "Stop limit reached (" + plugin.maxStops + ")."
-                    : "Tap features in visit order (" + plugin.stops.length + " added)."
+                    : "Tap a feature to add a stop. Tap again to revisit."
             }
             Label {
                 Layout.leftMargin: plugin.gutter
@@ -1101,15 +1140,64 @@ Item {
             ListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.leftMargin: plugin.gutter
+                Layout.rightMargin: plugin.gutter
+                Layout.bottomMargin: plugin.gutter
+                spacing: 8
                 clip: true
                 model: matches
                 delegate: ItemDelegate {
+                    id: featureCard
+                    readonly property string featureKey: model.currentLayer ? model.currentLayer.id + ":" + model.featureId : ""
+                    readonly property var visits: features.visitsByFeature[featureKey] || []
+                    readonly property bool added: visits.length > 0
+                    readonly property string visitLabel: visits.length > 1 ? "Visits " + visits.join(", ")
+                        : added ? "Visit " + visits[0] + " · " + plugin.stopRole(visits[0] - 1) : ""
                     width: ListView.view.width
+                    padding: 12
                     implicitHeight: Math.max(plugin.touchHeight, implicitContentHeight + topPadding + bottomPadding)
-                    enabled: !plugin.atLimit
-                    Material.foreground: Material.accent
+                    enabled: plugin.canAddStop
+                    opacity: !enabled && !added ? 0.6 : 1
                     text: model.featureName || ("FID " + model.featureId)
-                    onClicked: plugin.addStop(QfGeometryUtils.centroid(model.geometry), model.crs, text)
+                    Accessible.name: added ? text + ", " + visitLabel : text
+                    Accessible.description: added ? "Add another visit" : "Add to route"
+                    background: Rectangle {
+                        radius: 8
+                        color: featureCard.down || featureCard.added ? plugin.colors.secondary.background : QfTheme.groupBoxSurfaceColor
+                        border.color: featureCard.added || featureCard.visualFocus ? plugin.colors.selected.background : QfTheme.controlBorderColor
+                        border.width: featureCard.visualFocus ? 2 : 1
+                    }
+                    contentItem: RowLayout {
+                        spacing: 12
+                        CircleBadge {
+                            minimumSize: 28
+                            text: featureCard.added ? "✓" : "+"
+                            color: featureCard.added ? plugin.colors.selected.foreground : plugin.colors.secondary.foreground
+                            fill: featureCard.added ? plugin.colors.selected.background : plugin.colors.secondary.background
+                            Accessible.ignored: true
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            Label {
+                                Layout.fillWidth: true
+                                text: featureCard.text
+                                textFormat: Text.PlainText
+                                font: QfTheme.strongResultFont
+                                color: QfTheme.mainTextColor
+                                wrapMode: Text.Wrap
+                            }
+                            Label {
+                                visible: featureCard.added
+                                Layout.fillWidth: true
+                                text: featureCard.visitLabel
+                                color: plugin.colors.secondary.foreground
+                                font: QfTheme.tipFont
+                                wrapMode: Text.Wrap
+                            }
+                        }
+                    }
+                    onClicked: plugin.addStop(QfGeometryUtils.centroid(model.geometry), model.crs, text, featureKey)
                 }
                 ScrollBar.vertical: ScrollBar {}
             }

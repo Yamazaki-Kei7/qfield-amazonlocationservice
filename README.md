@@ -81,11 +81,11 @@ On the map, tap **Route from current location** to open Route Search with your c
 
 After adding at least two stops, tap **Find route** at the bottom of the map to search in that order. If **Enter settings** appears instead, tap it to enter the Region and API key.
 
-**To add stops from a layer**, open **Add from layer** in Route Search, choose a layer under **Layer for feature selection**, and tap **Select layer features**. Tap the feature names in visit order. The count at the top shows how many stops you have added. When finished, tap **Done** at the upper right and check the visit order. You can combine layer features with stops selected on the map.
+**To add stops from a layer**, open **Add from layer** in Route Search, choose a layer under **Layer for feature selection**, and tap **Select layer features**. Tap a feature card to add it. A checkmark and visit number show where it appears in the route, including stops added on the map or through place search. Tap the same card again to add a return visit. The card then lists both visit numbers. Tap **Done** to return to the route.
 
 The feature names in the image below are sample data.
 
-<img src="img/layer-feature-selection.png" alt="Select Features screen listing a survey office, a water sampling site, and an equipment depot" width="360">
+<img src="img/layer-feature-selection.png" alt="Select Features with checkmarks and visit numbers on the two features added to the route" width="360">
 
 ### Review the visit order and find a route
 

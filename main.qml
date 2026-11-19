@@ -26,6 +26,10 @@ Item {
     property bool needsOrigin: false
     property var stops: []
     property var travelMode: Routes.travelModes[0]
+    property string routePreference: "ShortestRoute"
+    readonly property string routeCriterion: Routes.routeCriterion(travelMode.id, routePreference)
+    property string visitOrderOverride: ""
+    readonly property string visitOrderCriterion: visitOrderOverride || routeCriterion
     // Optimizing the visit order always keeps the first stop; this keeps the last one too.
     property bool fixedEnd: false
     // The order replaced by the last optimization, for as long as it can be restored.
@@ -39,8 +43,7 @@ Item {
     readonly property string serviceName: "Amazon Location Service"
     readonly property url serviceIcon: Qt.resolvedUrl("Arch_Amazon-Location-Service_32.svg")
 
-    readonly property color ink: "#232f3e"
-    readonly property color accent: Colors.foreground(QfTheme.darkTheme)
+    readonly property var colors: Colors.forTheme(QfTheme.darkTheme)
     readonly property int gutter: 16
     readonly property int stopMarkerSize: 24
     readonly property int touchHeight: 44
@@ -167,6 +170,11 @@ Item {
         clearRoute()
     }
     onTravelModeChanged: clearRoute()
+    onRoutePreferenceChanged: clearRoute()
+    onVisitOrderOverrideChanged: {
+        optimizeNote = ""
+        message = ""
+    }
     onFixedEndChanged: optimizeNote = ""
 
     function clearRoute() {
@@ -216,7 +224,7 @@ Item {
 
     function search() {
         if (pending || searchHint) return
-        const body = Routes.requestBody(stops, travelMode.id)
+        const body = Routes.requestBody(stops, travelMode.id, routePreference)
         message = ""
         routeRequest.post("routes", "routes", body, text => {
             try {
@@ -239,7 +247,8 @@ Item {
         const before = stops
         const fixed = fixedEnd
         message = ""
-        optimizeRequest.post("routes", "optimize-waypoints", Routes.optimizeBody(before, travelMode.id, fixed), text => {
+        const body = Routes.optimizeBody(before, travelMode.id, fixed, visitOrderCriterion)
+        optimizeRequest.post("routes", "optimize-waypoints", body, text => {
             try {
                 const result = Routes.optimizedStops(JSON.parse(text), before, fixed)
                 if (result.changed) {
@@ -264,7 +273,7 @@ Item {
         region: plugin.region
         apiKey: plugin.apiKey
         onFailed: reason => plugin.message = reason
-        onRejected: status => plugin.message = Routes.rejection("検索できませんでした", status)
+        onRejected: (status, responseText) => plugin.message = Routes.rejection("検索できませんでした", status, responseText)
     }
 
     LocationRequest {
@@ -295,15 +304,15 @@ Item {
         readonly property int iconSize: Math.round(width * 0.7)
         round: true
         checkable: true
-        bgcolor: "#dd344c"
+        bgcolor: Colors.ink
         padding: 0
         iconSource: plugin.serviceIcon
         iconColor: "transparent"
         icon.width: serviceButton.iconSize
         icon.height: serviceButton.iconSize
         bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : (checked ? "▴" : "▾")
-        bottomRightIndicatorBgColor: Colors.surface(QfTheme.darkTheme)
-        bottomRightIndicatorFgColor: plugin.accent
+        bottomRightIndicatorBgColor: Colors.orange
+        bottomRightIndicatorFgColor: Colors.ink
         statusBadge.bottomMargin: 0
         statusBadge.rightMargin: 0
         Accessible.name: plugin.serviceName
@@ -381,7 +390,7 @@ Item {
                 radius: width / 2
                 x: marker.screenPoint.x - width / 2
                 y: marker.screenPoint.y - height / 2
-                color: isPlace ? plugin.accent : plugin.ink
+                color: isPlace ? Colors.blue : Colors.ink
                 border.color: "white"
                 Text { anchors.centerIn: parent; text: isPlace ? "●" : index + 1; color: "white" }
             }
@@ -477,17 +486,18 @@ Item {
         padding: 0
         modal: true
         focus: true
-        Material.accent: plugin.accent
+        Material.accent: plugin.colors.selected.background
     }
 
     component PanelHeader: Rectangle {
         id: header
         property string title
         property string dismissText: "閉じる"
+        property bool primaryDismiss: false
         signal dismissed()
         Layout.fillWidth: true
         implicitHeight: headerRow.implicitHeight + 16
-        color: plugin.ink
+        color: Colors.ink
         RowLayout {
             id: headerRow
             anchors.fill: parent
@@ -507,6 +517,7 @@ Item {
             }
             LocationButton {
                 text: header.dismissText
+                primary: header.primaryDismiss
                 Layout.minimumHeight: plugin.touchHeight
                 onClicked: header.dismissed()
             }
@@ -552,7 +563,7 @@ Item {
         background: Rectangle {
             radius: 8
             color: QfTheme.groupBoxSurfaceColor
-            border.color: card.held ? plugin.accent : QfTheme.controlBorderColor
+            border.color: card.held ? plugin.colors.selected.background : QfTheme.controlBorderColor
             border.width: card.held ? 2 : 1
         }
         contentItem: RowLayout {
@@ -596,7 +607,7 @@ Item {
                         Layout.alignment: Qt.AlignHCenter
                         Layout.preferredWidth: Math.max(26, implicitWidth + 8, implicitHeight)
                         Layout.preferredHeight: Layout.preferredWidth
-                        background: Rectangle { radius: height / 2; color: plugin.ink }
+                        background: Rectangle { radius: height / 2; color: Colors.ink }
                     }
                     Label {
                         visible: plugin.reorderable
@@ -611,7 +622,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 spacing: 2
-                Label { text: card.roleLabel; color: plugin.accent; font: QfTheme.tipFont }
+                Label { text: card.roleLabel; color: QfTheme.secondaryTextColor; font: QfTheme.tipFont }
                 Label {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
@@ -689,10 +700,42 @@ Item {
                                 checkable: true
                                 autoExclusive: true
                                 checked: plugin.travelMode.id === modelData.id
+                                font.bold: checked
                                 Accessible.role: Accessible.RadioButton
                                 onClicked: if (plugin.travelMode.id !== modelData.id) plugin.travelMode = modelData
                             }
                         }
+                    }
+                    GridLayout {
+                        id: routeChoices
+                        Layout.fillWidth: true
+                        visible: Routes.allowsShortestRoute(plugin.travelMode.id)
+                        enabled: !plugin.pending
+                        columns: width < 310 ? 2 : 3
+                        rowSpacing: 0
+                        Label {
+                            Layout.columnSpan: routeChoices.columns === 2 ? 2 : 1
+                            text: "経路の優先条件"
+                        }
+                        Repeater {
+                            model: Routes.routeCriteria
+                            RadioButton {
+                                required property string modelData
+                                Layout.minimumHeight: plugin.touchHeight
+                                text: Routes.criterionLabel(modelData)
+                                Accessible.name: "経路の優先条件・" + text
+                                checked: plugin.routeCriterion === modelData
+                                onClicked: plugin.routePreference = modelData
+                            }
+                        }
+                    }
+                    Label {
+                        visible: !routeChoices.visible
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        color: QfTheme.secondaryTextColor
+                        text: plugin.routeCriterion ? plugin.travelMode.label + "の経路は時間優先で検索します。"
+                            : "出発地と目的地の2地点を指定し、現在時刻に出発します。"
                     }
                     SectionTitle { text: plugin.needsOrigin ? "出発地を選択" : "地点を追加" }
                     LocationButton {
@@ -764,12 +807,21 @@ Item {
                         visible: plugin.optimizable
                         Layout.fillWidth: true
                         spacing: 4
-                        LocationButton {
+                        Label {
+                            id: visitOrderLabel
+                            text: "訪問順の優先条件"
+                        }
+                        ComboBox {
+                            id: orderChoice
                             Layout.fillWidth: true
                             Layout.minimumHeight: plugin.touchHeight
-                            enabled: plugin.canOptimize
-                            text: plugin.optimizing ? "最適化中…" : "訪問順を最適化"
-                            onClicked: plugin.optimize()
+                            enabled: !plugin.pending
+                            Accessible.name: visitOrderLabel.text
+                            readonly property var criteria: [""].concat(Routes.routeCriteria)
+                            model: criteria.map(value => value ? Routes.criterionLabel(value)
+                                : "経路と同じ（" + Routes.criterionLabel(plugin.routeCriterion) + "）")
+                            currentIndex: criteria.indexOf(plugin.visitOrderOverride)
+                            onActivated: index => plugin.visitOrderOverride = criteria[index]
                         }
                         RowLayout {
                             Layout.fillWidth: true
@@ -790,12 +842,19 @@ Item {
                         Label {
                             Layout.fillWidth: true
                             wrapMode: Text.Wrap
-                            text: !plugin.fixedEnd ? "出発地を固定し、ほかの地点を総距離が最短になる順に並べ替えます。" :
-                                plugin.stops.length < Routes.minOptimizeStops(true)
+                            text: plugin.fixedEnd && plugin.stops.length < Routes.minOptimizeStops(true)
                                 ? "目的地を固定する場合は、" + Routes.minOptimizeStops(true) + "地点以上で最適化できます。"
-                                : "出発地と目的地を固定し、経由地を総距離が最短になる順に並べ替えます。"
+                                : plugin.fixedEnd ? "出発地と目的地を固定し、経由地を並べ替えます。"
+                                : "出発地を固定し、残りの地点を並べ替えます。"
                             color: QfTheme.secondaryTextColor
                             font: QfTheme.tipFont
+                        }
+                        LocationButton {
+                            Layout.fillWidth: true
+                            Layout.minimumHeight: plugin.touchHeight
+                            enabled: plugin.canOptimize
+                            text: plugin.optimizing ? "最適化中…" : "訪問順を最適化"
+                            onClicked: plugin.optimize()
                         }
                         Label {
                             Layout.fillWidth: true
@@ -856,8 +915,8 @@ Item {
                     RowLayout {
                         visible: plugin.stops.length > 0
                         enabled: !plugin.pending
-                        LocationButton { text: "末尾の地点を削除"; onClicked: plugin.stops = plugin.stops.slice(0, -1) }
-                        LocationButton { text: "全消去"; onClicked: plugin.stops = [] }
+                        LocationButton { text: "末尾の地点を削除"; destructive: true; onClicked: plugin.stops = plugin.stops.slice(0, -1) }
+                        LocationButton { text: "全消去"; destructive: true; onClicked: plugin.stops = [] }
                     }
                 }
             }
@@ -878,15 +937,16 @@ Item {
                     wrapMode: Text.Wrap
                     text: plugin.statusText
                     textFormat: Text.PlainText
-                    color: plugin.message ? plugin.accent : QfTheme.mainTextColor
+                    color: plugin.message ? plugin.colors.danger.foreground : QfTheme.mainTextColor
                 }
                 LocationButton {
                     Layout.fillWidth: true
                     Layout.minimumHeight: 48
                     enabled: !plugin.pending && !plugin.searchHint
                     Accessible.description: plugin.statusText
-                    text: routeRequest.pending ? "経路を検索中…" : Routes.supportsWaypoints(plugin.travelMode.id)
-                          ? "指定順で最短経路を検索" : plugin.travelMode.label + "の経路を検索"
+                    text: routeRequest.pending ? "経路を検索中…"
+                          : plugin.travelMode.label + "の経路を検索"
+                            + (plugin.routeCriterion ? "（" + Routes.criterionLabel(plugin.routeCriterion) + "）" : "")
                     topInset: 0
                     bottomInset: 0
                     font: QfTheme.strongTitleFont
@@ -955,7 +1015,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            PanelHeader { title: "接続設定"; dismissText: "完了"; onDismissed: settingsPopup.close() }
+            PanelHeader { title: "接続設定"; dismissText: "完了"; primaryDismiss: true; onDismissed: settingsPopup.close() }
             ScrollView {
                 id: settingsForm
                 Layout.fillWidth: true
@@ -1002,7 +1062,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            PanelHeader { title: "地物を選択"; dismissText: "選択を終了"; onDismissed: features.close() }
+            PanelHeader { title: "地物を選択"; dismissText: "選択を終了"; primaryDismiss: true; onDismissed: features.close() }
             Label {
                 Layout.fillWidth: true
                 Layout.margins: plugin.gutter

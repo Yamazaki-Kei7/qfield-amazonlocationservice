@@ -45,10 +45,11 @@ test("stop names stay on the device", () => {
 })
 
 for (const mode of ["Car", "Pedestrian", "Scooter", "Truck"]) {
-    test(mode + " optimizes the order for the shortest distance", () => {
+    test(mode + " can optimize visit order by distance or time", () => {
         const body = routes.optimizeBody(stops, mode, false)
         assert.equal(body.TravelMode, mode)
         assert.equal(body.OptimizeSequencingFor, "ShortestRoute")
+        assert.equal(routes.optimizeBody(stops, mode, false, "FastestRoute").OptimizeSequencingFor, "FastestRoute")
     })
 }
 

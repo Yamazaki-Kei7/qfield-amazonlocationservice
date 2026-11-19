@@ -9,7 +9,7 @@ QtObject {
     // No usable reply: offline, timed out, or the request could not be started.
     signal failed(string reason)
     // The service replied with a status other than 200.
-    signal rejected(int status)
+    signal rejected(int status, string responseText)
 
     function cancel() {
         const request = pending
@@ -27,7 +27,7 @@ QtObject {
             timeout.stop()
             if (request.status === 200) loaded(request.responseText)
             else if (request.status === 0) api.failed("通信できません。接続を確認してください。")
-            else api.rejected(request.status)
+            else api.rejected(request.status, request.responseText)
         }
         try {
             request.open("POST", "https://" + service + ".geo." + region + ".amazonaws.com/v2/" + path + "?key=" + encodeURIComponent(apiKey))

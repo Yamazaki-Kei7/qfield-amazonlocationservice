@@ -7,8 +7,23 @@ var travelModes = [
     { id: "Intermodal", label: "複合移動" }
 ]
 
+var routeCriteria = ["ShortestRoute", "FastestRoute"]
+
 function supportsWaypoints(mode) {
     return mode !== "Transit" && mode !== "Intermodal"
+}
+
+function allowsShortestRoute(mode) {
+    return mode === "Car" || mode === "Truck"
+}
+
+function routeCriterion(mode, preference) {
+    if (!supportsWaypoints(mode)) return ""
+    return allowsShortestRoute(mode) && preference !== "FastestRoute" ? "ShortestRoute" : "FastestRoute"
+}
+
+function criterionLabel(criterion) {
+    return criterion === "ShortestRoute" ? "距離優先" : "時間優先"
 }
 
 function stopLimit(mode) {
@@ -24,7 +39,7 @@ function usableStops(stops, mode, min) {
     return stops.length >= min && stops.length <= stopLimit(mode) && stops.every(s => validPosition(s.position))
 }
 
-function requestBody(stops, mode) {
+function requestBody(stops, mode, preference) {
     if (!usableStops(stops, mode, 2))
         throw new Error("選択した移動手段で利用できる地点を指定してください。")
     const body = {
@@ -33,9 +48,10 @@ function requestBody(stops, mode) {
         TravelMode: mode,
         LegGeometryFormat: "Simple"
     }
-    if (supportsWaypoints(mode)) {
+    const criterion = routeCriterion(mode, preference)
+    if (criterion) {
         body.Waypoints = stops.slice(1, -1).map(s => ({ Position: s.position }))
-        body.OptimizeRoutingFor = "ShortestRoute"
+        body.OptimizeRoutingFor = criterion
     } else {
         body.DepartNow = true
     }
@@ -56,8 +72,19 @@ function routeWkt(response, body) {
     return "MULTILINESTRING(" + legs.join(",") + ")"
 }
 
-function rejection(failed, status) {
-    return failed + "（HTTP " + status + "）。地点、リージョン、キーの権限を確認してください。"
+function rejection(failed, status, responseText) {
+    const prefix = failed + "（HTTP " + status + "）。"
+    if (status === 400) {
+        try {
+            const error = JSON.parse(responseText)
+            const detail = error && (error.message || error.Message)
+            if (typeof detail === "string" && detail.trim()) return prefix + detail.trim()
+        } catch (e) {
+            // A proxy may return plain text or an empty body.
+        }
+        return prefix + "指定した地点と移動手段を確認してください。"
+    }
+    return prefix + "地点、リージョン、キーの権限を確認してください。"
 }
 
 var optimizePerimeterKm = 500 // OptimizeWaypoints rejects stops inside a bounding box with a longer perimeter.
@@ -66,7 +93,7 @@ function minOptimizeStops(fixedEnd) {
     return fixedEnd ? 4 : 3 // Reordering needs two stops that are not a fixed end.
 }
 
-function optimizeBody(stops, mode, fixedEnd) {
+function optimizeBody(stops, mode, fixedEnd, criterion) {
     if (!supportsWaypoints(mode) || !usableStops(stops, mode, minOptimizeStops(fixedEnd)))
         throw new Error("訪問順を最適化できる移動手段と地点を指定してください。")
     const end = fixedEnd ? stops.length - 1 : stops.length
@@ -75,7 +102,7 @@ function optimizeBody(stops, mode, fixedEnd) {
         // Each Id is the stop's index, so optimizedStops() can map the reply back without sending names.
         Waypoints: stops.slice(1, end).map((s, i) => ({ Id: String(i + 1), Position: s.position })),
         TravelMode: mode,
-        OptimizeSequencingFor: "ShortestRoute"
+        OptimizeSequencingFor: criterion === "FastestRoute" ? "FastestRoute" : "ShortestRoute"
     }
     if (fixedEnd) body.Destination = stops[end].position
     return body

@@ -578,6 +578,8 @@ Item {
                         LocationButton { text: "接続設定"; enabled: !plugin.pending; onClicked: settingsPopup.open() }
                     }
                     GridLayout {
+                        id: travelModeGrid
+                        readonly property int iconSize: 18
                         Layout.fillWidth: true
                         columns: width < 280 ? 2 : 3
                         columnSpacing: 4
@@ -590,11 +592,16 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 1
                                 Layout.minimumHeight: plugin.touchHeight
+                                Layout.preferredHeight: Math.max(plugin.touchHeight, implicitContentHeight + verticalPadding * 2)
                                 horizontalPadding: 4
+                                verticalPadding: 2
+                                spacing: 4
                                 text: modelData.label
                                 icon.source: Qt.resolvedUrl("icons/" + modelData.id + ".svg")
+                                icon.width: travelModeGrid.iconSize
+                                icon.height: travelModeGrid.iconSize
                                 icon.color: Material.foreground
-                                display: AbstractButton.TextUnderIcon
+                                display: AbstractButton.TextBesideIcon
                                 checkable: true
                                 autoExclusive: true
                                 checked: plugin.travelMode.id === modelData.id

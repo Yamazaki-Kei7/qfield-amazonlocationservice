@@ -10,8 +10,9 @@ Button {
 
     Material.roundedScale: Material.SmallScale
     Material.elevation: 0
-    Material.accent: Colors.foreground(QfTheme.darkTheme)
+    Material.foreground: filled ? "white" : Colors.foreground(QfTheme.darkTheme)
+    // Material uses the accent color for a checked button's label.
+    Material.accent: Material.foreground
     Material.background: !enabled ? QfTheme.controlBackgroundDisabledColor :
                          filled ? Colors.red : Colors.surface(QfTheme.darkTheme)
-    Material.foreground: filled ? "white" : Material.accent
 }

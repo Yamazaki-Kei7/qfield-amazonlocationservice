@@ -544,6 +544,18 @@ Item {
         font: QfTheme.strongResultFont
     }
 
+    component CircleBadge: Label {
+        id: badge
+        property color fill
+        property int minimumSize: 26
+        font: QfTheme.strongResultFont
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        Layout.preferredWidth: Math.max(minimumSize, implicitWidth + 8, implicitHeight)
+        Layout.preferredHeight: Layout.preferredWidth
+        background: Rectangle { radius: height / 2; color: badge.fill }
+    }
+
     component MoveButton: LocationButton {
         required property int stopIndex
         required property int step
@@ -612,16 +624,11 @@ Item {
                     id: gripLabels
                     anchors.centerIn: parent
                     spacing: 2
-                    Label {
+                    CircleBadge {
                         text: card.index + 1
-                        font: QfTheme.strongResultFont
                         color: "white"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                        fill: Colors.ink
                         Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: Math.max(26, implicitWidth + 8, implicitHeight)
-                        Layout.preferredHeight: Layout.preferredWidth
-                        background: Rectangle { radius: height / 2; color: Colors.ink }
                     }
                     Label {
                         visible: plugin.reorderable
@@ -1162,18 +1169,11 @@ Item {
                     }
                     contentItem: RowLayout {
                         spacing: 12
-                        Label {
+                        CircleBadge {
+                            minimumSize: 28
                             text: featureCard.added ? "✓" : "+"
-                            font: QfTheme.strongResultFont
                             color: featureCard.added ? plugin.colors.selected.foreground : plugin.colors.secondary.foreground
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            Layout.preferredWidth: Math.max(28, implicitWidth + 8, implicitHeight)
-                            Layout.preferredHeight: Layout.preferredWidth
-                            background: Rectangle {
-                                radius: height / 2
-                                color: featureCard.added ? plugin.colors.selected.background : plugin.colors.secondary.background
-                            }
+                            fill: featureCard.added ? plugin.colors.selected.background : plugin.colors.secondary.background
                             Accessible.ignored: true
                         }
                         ColumnLayout {

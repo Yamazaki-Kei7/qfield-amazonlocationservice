@@ -30,3 +30,13 @@ function routeWkt(response, legCount) {
     })
     return "MULTILINESTRING(" + legs.join(",") + ")"
 }
+
+function placeResults(response) {
+    if (!Array.isArray(response.ResultItems)) throw new Error("検索結果を読み取れませんでした。")
+    return response.ResultItems.filter(item => item && validPosition(item.Position)).map(item => {
+        const address = (item.Address && item.Address.Label) || ""
+        const label = item.Title || address
+        // An address that only repeats the label is dropped so views show it once.
+        return { label: label, address: address === label ? "" : address, position: item.Position }
+    }).filter(place => place.label)
+}

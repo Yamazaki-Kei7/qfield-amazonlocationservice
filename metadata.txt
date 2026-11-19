@@ -3,4 +3,4 @@ name=Amazon Location Routes
 author=Yamazaki-Kei7
 description=Display shortest driving routes through map locations or selected features in visit order
 icon=icon.svg
-version=1.3.0
+version=1.4.0

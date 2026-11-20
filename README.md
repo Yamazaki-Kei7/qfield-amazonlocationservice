@@ -1,5 +1,7 @@
 # Amazon Location Service for QField
 
+[日本語の使い方](README.ja.md)
+
 Search for a place or address, then get directions to it from your current location. For fieldwork with multiple stops, choose a travel mode and optimize the visit order for distance or travel time.
 
 ## Requirements
@@ -148,10 +150,18 @@ Once the search completes, the map displays the entire route. In the example bel
 
 ## Development
 
-Run this command in the project directory to build the distribution ZIP.
+QField loads `main_<language>.qm` from the plugin directory and uses the English source strings when no catalog is available. To update or add a language, extract the messages with Qt 6 Linguist tools, translate the `.ts` file (including the SearchText language code), and compile it. For Japanese, run the following in the project directory.
 
 ```sh
-zip amazon-location-service.zip main.qml PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg LICENSE
+lupdate main.qml PlaceSearch.qml LocationRequest.qml Routes.js -locations none -target-language ja -ts main_ja.ts
+# Edit main_ja.ts in Qt Linguist before compiling.
+lrelease main_ja.ts -qm main_ja.qm
+```
+
+Build the distribution ZIP with the compiled translations.
+
+```sh
+zip amazon-location-service.zip main.qml main_*.qm PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg LICENSE
 ```
 
 Installation from a URL distributes `amazon-location-service.zip` directly from the `main` branch. After changing the source, update `version` in `metadata.txt`, rebuild the ZIP, and commit it.

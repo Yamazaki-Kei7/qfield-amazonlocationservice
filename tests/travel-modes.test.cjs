@@ -1,12 +1,7 @@
 const { test } = require("node:test")
 const assert = require("node:assert/strict")
-const { readFileSync } = require("node:fs")
-const { join } = require("node:path")
-const { runInNewContext } = require("node:vm")
+const routes = require("./load-routes.cjs")()
 
-// QML imports plain JS files as namespaces.
-const routes = {}
-runInNewContext(readFileSync(join(__dirname, "../Routes.js"), "utf8"), routes)
 const stops = [[139, 35], [140, 36], [141, 37]].map(position => ({ position }))
 const legs = stops.slice(1).map((stop, i) => ({
     Geometry: { LineString: [stops[i].position, stop.position] }

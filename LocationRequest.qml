@@ -26,7 +26,7 @@ QtObject {
             pending = null
             timeout.stop()
             if (request.status === 200) loaded(request.responseText)
-            else if (request.status === 0) api.failed("Could not connect. Check your connection.")
+            else if (request.status === 0) api.failed(qsTranslate("AmazonLocationService", "Could not connect. Check your connection."))
             else api.rejected(request.status, request.responseText)
         }
         try {
@@ -36,7 +36,7 @@ QtObject {
             request.send(JSON.stringify(body))
         } catch (error) {
             cancel()
-            api.failed("Could not start the request.")
+            api.failed(qsTranslate("AmazonLocationService", "Could not start the request."))
         }
     }
 
@@ -46,7 +46,7 @@ QtObject {
         interval: 45000
         onTriggered: {
             api.cancel()
-            api.failed("Request timed out. Check your connection and try again.")
+            api.failed(qsTranslate("AmazonLocationService", "Request timed out. Check your connection and try again."))
         }
     }
 }

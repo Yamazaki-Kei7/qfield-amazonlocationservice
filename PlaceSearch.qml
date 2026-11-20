@@ -43,17 +43,25 @@ ColumnLayout {
         const center = searchCenter()
         results = []
         if (!Routes.validPosition(center)) {
-            feedback = "Could not get the map center. Move the map and search again."
+            feedback = qsTranslate("AmazonLocationService", "Could not get the map center. Move the map and search again.")
             return
         }
         Qt.inputMethod.hide()
         feedback = ""
-        request.post("places", "search-text", { QueryText: term, BiasPosition: center, Language: "en" }, text => {
+        //: BCP 47 language code requested for place names and addresses.
+        const language = qsTranslate("AmazonLocationService", "en", "SearchText language code")
+        request.post("places", "search-text", { QueryText: term, BiasPosition: center, Language: language }, text => {
             try {
                 results = Routes.placeResults(JSON.parse(text))
-                feedback = results.length ? results.length + (results.length === 1 ? " result · " : " results · ") + selectionHint : "No places found. Try another place name or area."
+                if (!results.length) {
+                    feedback = qsTranslate("AmazonLocationService", "No places found. Try another place name or area.")
+                } else if (results.length === 1) {
+                    feedback = qsTranslate("AmazonLocationService", "1 result · %1").arg(selectionHint)
+                } else {
+                    feedback = qsTranslate("AmazonLocationService", "%1 results · %2").arg(results.length).arg(selectionHint)
+                }
             } catch (error) {
-                feedback = "Could not read the search results. Try again."
+                feedback = qsTranslate("AmazonLocationService", "Could not read the search results. Try again.")
             }
         })
     }
@@ -62,7 +70,7 @@ ColumnLayout {
         region: search.region
         apiKey: search.apiKey
         onFailed: reason => search.feedback = reason
-        onRejected: status => search.feedback = "Place search failed (HTTP " + status + "). Check the Region and the key's geo-places:SearchText permission."
+        onRejected: status => search.feedback = qsTranslate("AmazonLocationService", "Place search failed (HTTP %1). Check the Region and the key's geo-places:SearchText permission.").arg(status)
     }
 
     spacing: 0
@@ -71,7 +79,7 @@ ColumnLayout {
         Layout.margins: search.gutter
         spacing: 6
         Label {
-            text: "Place or address"
+            text: qsTranslate("AmazonLocationService", "Place or address")
             font: QfTheme.strongResultFont
         }
         RowLayout {
@@ -80,14 +88,14 @@ ColumnLayout {
                 id: query
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                placeholderText: "e.g. station, cafe"
-                Accessible.name: "Place or address"
+                placeholderText: qsTranslate("AmazonLocationService", "e.g. station, cafe")
+                Accessible.name: qsTranslate("AmazonLocationService", "Place or address")
                 maximumLength: 200
                 onAccepted: search.submit()
                 onTextEdited: search.clearResults()
             }
             LocationButton {
-                text: "Search"
+                text: qsTranslate("AmazonLocationService", "Search")
                 Layout.minimumHeight: search.touchHeight
                 enabled: !!query.text.trim() && !search.pending && !search.connectionHint
                 primary: true
@@ -97,12 +105,12 @@ ColumnLayout {
         Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
-            text: search.connectionHint || (search.pending ? "Searching…" :
-                search.feedback || "Places near the map center are prioritized.")
+            text: search.connectionHint || (search.pending ? qsTranslate("AmazonLocationService", "Searching…") :
+                search.feedback || qsTranslate("AmazonLocationService", "Places near the map center are prioritized."))
             color: QfTheme.secondaryTextColor
         }
         LocationButton {
-            text: "Settings"
+            text: qsTranslate("AmazonLocationService", "Settings")
             visible: !!search.connectionHint || (!search.pending && !search.results.length)
             onClicked: search.settingsRequested()
         }

@@ -322,7 +322,7 @@ Item {
         readonly property int iconSize: Math.round(width * 0.7)
         round: true
         checkable: true
-        bgcolor: Colors.ink
+        bgcolor: Colors.serviceRed
         padding: 0
         iconSource: plugin.serviceIcon
         iconColor: "transparent"
@@ -344,7 +344,7 @@ Item {
         round: true
         visible: serviceButton.checked
         display: AbstractButton.IconOnly
-        bgcolor: QfTheme.toolButtonBackgroundColor
+        bgcolor: Colors.blue
         opacity: enabled ? 1 : 0.4
         Accessible.name: text
         ToolTip.text: text

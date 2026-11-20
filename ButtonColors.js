@@ -2,6 +2,7 @@
 
 const ink = "#232f3e"
 const orange = "#ff9900"
+const serviceRed = "#dd344c"
 const blue = "#005ea8"
 const primary = { background: orange, foreground: ink }
 

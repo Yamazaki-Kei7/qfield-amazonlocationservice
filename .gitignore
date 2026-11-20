@@ -6,3 +6,6 @@
 *.qmlproject.user*
 *.qmlc
 *.jsc
+
+# Working notes
+.tmp/

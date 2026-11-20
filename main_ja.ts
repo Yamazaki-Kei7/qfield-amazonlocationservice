@@ -216,8 +216,16 @@
         <translation>地図から地点を追加</translation>
     </message>
     <message>
-        <source>Tap the map in visit order. Find a route after adding at least two stops.</source>
-        <translation>訪問順に地図をタップしてください。2か所以上追加すると経路を検索できます。</translation>
+        <source>Tap the origin on the map, or move the map to align it with the crosshair.</source>
+        <translation>地図をタップするか、地図を動かして出発地を照準に合わせてください。</translation>
+    </message>
+    <message>
+        <source>Tap the next destination, or move the map to align it with the crosshair.</source>
+        <translation>次の目的地をタップするか、地図を動かして照準に合わせてください。</translation>
+    </message>
+    <message>
+        <source>Add at center</source>
+        <translation>中心に追加</translation>
     </message>
     <message>
         <source>Add from layer ▴</source>

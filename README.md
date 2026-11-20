@@ -77,9 +77,9 @@ On the map, tap **Route from current location** to open Route Search with your c
 
 ### Add stops from the map or a layer
 
-**To add stops from the map**, tap **Add stops from map**, then tap the map in visit order, starting with the origin. In the example below, the black markers indicate **1 as the origin, 2 as a waypoint, and 3 as the destination**.
+Tap **Add stops from map**, then tap a location to add it to the visit order. For precise placement, zoom in, move the map until the orange crosshair is over the location, and tap **Add at center**. You can use either method for each stop. In the example below, **1** is the origin, **2** is a waypoint, and **3** is the destination.
 
-<img src="img/map-stop-selection.png" alt="Map with numbered stops 1, 2, and 3, a stop count on the service button, and a route search button at the bottom" width="360">
+<img src="img/map-stop-selection.png" alt="Three numbered stops on a map with a central crosshair and the Add at center and Find route buttons below" width="360">
 
 After adding at least two stops, tap **Find route** at the bottom of the map to search in that order. If **Enter settings** appears instead, tap it to enter the Region and API key.
 
@@ -93,7 +93,7 @@ The feature names in the image below are sample data.
 
 ### Review the visit order and find a route
 
-While you add stops from the map, the service button shows the stop count. Open the service menu, select **Route Search**, and check that **Visit order** lists the origin first, followed by any waypoints and then the destination.
+While you add stops from the map, the service button shows the stop count. Tap **Back** to review the origin, waypoints, and destination under **Visit order**.
 
 <img src="img/visit-order-editor.png" alt="Three scooter stops in visit order, with Shortest selected for the order and Fastest for the route" width="360">
 

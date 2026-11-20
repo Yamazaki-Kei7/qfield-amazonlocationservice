@@ -4,8 +4,8 @@ QField の地図で地名や住所を検索し、現在地から目的地まで�
 
 ## インストール
 
-1. QField のサイドパネルでメニューを開き、「プラグインマネージャー」を選びます。
-2. 「URL からプラグインをインストール」を選び、次の URL を入力します。
+1. QField のサイドパネルでメニューを開き、「Plugin Manager」を選びます。
+2. 「URLからプラグインをインストール」を選び、次の URL を入力します。
 
    ```text
    https://raw.githubusercontent.com/Yamazaki-Kei7/qfield-amazonlocationservice/main/amazon-location-service.zip
@@ -13,7 +13,7 @@ QField の地図で地名や住所を検索し、現在地から目的地まで�
 
 3. ローカルプラグインの一覧で「Amazon Location Service」を有効にします。実行許可を求められた場合は許可してください。
 
-以前の `amazon-location-routes.zip` を利用していた場合は、旧プラグインを無効にしてください。QField を日本語に設定すると、このプラグインも日本語で表示されます。言語を変更したあとも以前の言語が表示される場合は、QField を再起動してください。
+以前の `amazon-location-routes.zip` を利用していた場合は、旧プラグインを無効にしてください。QField 4.2.6 以降では、QField を日本語に設定するとこのプラグインも日本語で表示されます。それより前のバージョンでは英語で表示されます。言語を変更したあとも以前の言語が表示される場合は、QField を再起動してください。
 
 ## 接続設定
 
@@ -51,4 +51,4 @@ QField の地図で地名や住所を検索し、現在地から目的地まで�
 - 現在地を取得できない場合は、QField の測位状態を確認するか、「地図から地点を追加」で出発地を指定してください。
 - 訪問順の最適化では、全地点を囲む長方形の周長が 500 km を超えるとエラーになります。範囲を狭めるか、手動で訪問順を指定してください。
 
-検索にはインターネット接続が必要です。地点検索では検索語と地図中心の座標を、経路検索と最適化では選んだ地点の座標を Amazon Location Service に送信します。地点検索、経路検索、訪問順の最適化は、それぞれ Amazon Location Service の課金対象です。[AWS の料金表](https://aws.amazon.com/jp/location/pricing/)
+検索にはインターネット接続が必要です。地点検索では検索語と地図中心の座標を、経路検索と最適化では選んだ地点の座標を Amazon Location Service に送信します。地点検索、経路検索、訪問順の最適化は、それぞれ Amazon Location Service の課金対象です。スクーターでの最適化、全地点を囲む長方形の周長が 200 km を超える最適化、「複数の交通手段」の経路検索には Premium 料金が適用されます。[AWS の料金表](https://aws.amazon.com/jp/location/pricing/)

@@ -73,18 +73,19 @@ function routeWkt(response, body) {
 }
 
 function rejection(failed, status, responseText) {
-    const prefix = qsTranslate("AmazonLocationService", "%1 (HTTP %2).").arg(failed).arg(status)
+    //: %1 is the failed action, %2 the HTTP status, and %3 the service's message or what to check.
+    const explain = detail => qsTranslate("AmazonLocationService", "%1 (HTTP %2). %3").arg(failed).arg(status).arg(detail)
     if (status === 400) {
         try {
             const error = JSON.parse(responseText)
             const detail = error && (error.message || error.Message)
-            if (typeof detail === "string" && detail.trim()) return prefix + " " + detail.trim()
+            if (typeof detail === "string" && detail.trim()) return explain(detail.trim())
         } catch (e) {
             // A proxy may return plain text or an empty body.
         }
-        return prefix + " " + qsTranslate("AmazonLocationService", "Check the stops and travel mode.")
+        return explain(qsTranslate("AmazonLocationService", "Check the stops and travel mode."))
     }
-    return prefix + " " + qsTranslate("AmazonLocationService", "Check the stops, region, and API key permissions.")
+    return explain(qsTranslate("AmazonLocationService", "Check the stops, region, and API key permissions."))
 }
 
 var optimizePerimeterKm = 500 // OptimizeWaypoints rejects stops inside a bounding box with a longer perimeter.
@@ -114,9 +115,10 @@ function optimizedStops(response, stops, fixedEnd) {
         // The service names the fixed ends "Origin" and "Destination".
         const names = response.ImpedingWaypoints
             .map(w => w && stops[w.Id === "Origin" ? 0 : w.Id === "Destination" ? stops.length - 1 : Number(w.Id)])
-            .filter(Boolean).map(s => '"' + s.label + '"')
+            .filter(Boolean).map(s => qsTranslate("AmazonLocationService", "\"%1\"", "Quoted stop name").arg(s.label))
         throw new Error(names.length
-            ? qsTranslate("AmazonLocationService", "Could not optimize visit order. No valid order includes %1.").arg(names.join(", "))
+            ? qsTranslate("AmazonLocationService", "Could not optimize visit order. No valid order includes %1.")
+                .arg(names.join(qsTranslate("AmazonLocationService", ", ", "Between quoted stop names")))
             : qsTranslate("AmazonLocationService", "Could not optimize visit order."))
     }
     const order = (Array.isArray(response.OptimizedWaypoints) ? response.OptimizedWaypoints : [])

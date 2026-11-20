@@ -1,4 +1,3 @@
-pragma Translator: AmazonLocationService
 import QtQuick
 
 // One in-flight JSON POST to an Amazon Location Service v2 endpoint, with abort and timeout.

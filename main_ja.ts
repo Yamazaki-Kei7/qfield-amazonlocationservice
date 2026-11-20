@@ -17,7 +17,7 @@
     </message>
     <message>
         <source>Add one more stop as the destination.</source>
-        <translation>目的地をもう1か所追加してください。</translation>
+        <translation>目的地となる地点をもう1か所追加してください。</translation>
     </message>
     <message>
         <source>Enter an AWS Region (e.g. ap-northeast-1).</source>
@@ -41,7 +41,7 @@
     </message>
     <message>
         <source>Added %1 to the route.</source>
-        <translation>%1を経路に追加しました。</translation>
+        <translation>「%1」を経路に追加しました。</translation>
     </message>
     <message>
         <source>Current location</source>
@@ -61,7 +61,7 @@
     </message>
     <message>
         <source>%1 route with %2 stops displayed.</source>
-        <translation>%2か所を巡る%1の経路を表示しました。</translation>
+        <translation>%2か所を結ぶ%1の経路を表示しました。</translation>
     </message>
     <message>
         <source>Could not read the route response.</source>
@@ -89,7 +89,7 @@
     </message>
     <message>
         <source>Show search buttons</source>
-        <translation>検索ボタンを表示</translation>
+        <translation>検索ボタンを表示する</translation>
     </message>
     <message>
         <source>Place Search</source>
@@ -109,7 +109,7 @@
     </message>
     <message>
         <source>Route from current location</source>
-        <translation>現在地からの経路を検索</translation>
+        <translation>現在地からの経路を調べる</translation>
     </message>
     <message>
         <source>Add as destination</source>
@@ -117,7 +117,7 @@
     </message>
     <message>
         <source>Route to here</source>
-        <translation>ここへの経路を検索</translation>
+        <translation>ここへの経路を調べる</translation>
     </message>
     <message>
         <source>Back to results</source>
@@ -129,7 +129,7 @@
     </message>
     <message>
         <source>Enter settings</source>
-        <translation>接続設定を開く</translation>
+        <translation>設定を入力</translation>
     </message>
     <message>
         <source>Find route</source>
@@ -237,7 +237,7 @@
     </message>
     <message>
         <source>Visit order (%1 / %2)</source>
-        <translation>訪問順（%1 / %2地点）</translation>
+        <translation>訪問順（%1 / %2か所）</translation>
     </message>
     <message>
         <source>Visit order preference</source>
@@ -337,7 +337,7 @@
     </message>
     <message>
         <source>%1 / %2 route stops</source>
-        <translation>経路上の地点：%1 / %2</translation>
+        <translation>経路の地点：%1 / %2か所</translation>
     </message>
     <message>
         <source>Stop limit reached (%1).</source>
@@ -490,8 +490,9 @@
         <translation>経路の座標を読み取れませんでした。</translation>
     </message>
     <message>
-        <source>%1 (HTTP %2).</source>
-        <translation>%1（HTTP %2）。</translation>
+        <source>%1 (HTTP %2). %3</source>
+        <extracomment>%1 is the failed action, %2 the HTTP status, and %3 the service&apos;s message or what to check.</extracomment>
+        <translation>%1（HTTP %2）。%3</translation>
     </message>
     <message>
         <source>Check the stops and travel mode.</source>
@@ -506,8 +507,18 @@
         <translation>訪問順を最適化できる移動手段と地点を選んでください。</translation>
     </message>
     <message>
+        <source>&quot;%1&quot;</source>
+        <comment>Quoted stop name</comment>
+        <translation>「%1」</translation>
+    </message>
+    <message>
         <source>Could not optimize visit order. No valid order includes %1.</source>
-        <translation>訪問順を最適化できませんでした。%1を含む経路が見つかりません。</translation>
+        <translation>訪問順を最適化できませんでした。%1を含む訪問順が見つかりません。</translation>
+    </message>
+    <message>
+        <source>, </source>
+        <comment>Between quoted stop names</comment>
+        <translation>、</translation>
     </message>
     <message>
         <source>Could not optimize visit order.</source>

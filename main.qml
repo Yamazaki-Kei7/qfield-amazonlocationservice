@@ -1160,7 +1160,7 @@ Item {
             plugin.stops.forEach((stop, index) => {
                 if (!stop.featureKey) return
                 if (!visits[stop.featureKey]) visits[stop.featureKey] = []
-                visits[stop.featureKey].push(index + 1)
+                visits[stop.featureKey].push(index)
             })
             return visits
         }
@@ -1270,7 +1270,6 @@ Item {
                     Column {
                         id: cardContents
                         width: parent.width
-                        bottomPadding: featureCard.added ? 6 : 0
                         ItemDelegate {
                             id: addVisit
                             width: parent.width
@@ -1305,6 +1304,7 @@ Item {
                         Flow {
                             leftPadding: addVisit.leftPadding
                             rightPadding: addVisit.rightPadding
+                            bottomPadding: 6
                             width: parent.width
                             spacing: 4
                             visible: featureCard.added
@@ -1312,13 +1312,12 @@ Item {
                                 model: featureCard.visits
                                 delegate: LocationButton {
                                     required property int modelData
-                                    readonly property string visitLabel: qsTranslate("AmazonLocationService", "Visit %1 · %2").arg(modelData).arg(plugin.stopRole(modelData - 1))
-                                    text: visitLabel + "  ×"
-                                    Accessible.name: qsTranslate("AmazonLocationService", "Remove visit %1 to %2").arg(modelData).arg(addVisit.text)
+                                    text: qsTranslate("AmazonLocationService", "Visit %1 · %2").arg(modelData + 1).arg(plugin.stopRole(modelData)) + "  ×"
+                                    Accessible.name: qsTranslate("AmazonLocationService", "Remove visit %1 to %2").arg(modelData + 1).arg(addVisit.text)
                                     height: Math.max(implicitHeight, plugin.touchHeight)
                                     destructive: true
                                     enabled: !plugin.pending
-                                    onClicked: plugin.removeStop(modelData - 1)
+                                    onClicked: plugin.removeStop(modelData)
                                 }
                             }
                         }

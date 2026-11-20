@@ -1,12 +1,6 @@
 const { test } = require("node:test")
 const assert = require("node:assert/strict")
-const { readFileSync } = require("node:fs")
-const { join } = require("node:path")
-const { runInNewContext } = require("node:vm")
-
-// QML imports plain JS files as namespaces.
-const routes = {}
-runInNewContext(readFileSync(join(__dirname, "../Routes.js"), "utf8"), routes)
+const routes = require("./load-routes.cjs")()
 
 const stops = [
     { position: [139.7671, 35.6812], label: "東京駅" },

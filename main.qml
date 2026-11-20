@@ -1,3 +1,4 @@
+pragma Translator: AmazonLocationService
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Material
@@ -60,15 +61,15 @@ Item {
         && !connectionHint && !pending
     readonly property string statusText: message || searchHint
     readonly property string searchHint: {
-        if (stops.length > maxStops) return travelMode.label + " supports up to " + maxStops + " stops. Remove stops or change the travel mode."
-        if (stops.length === 0) return "Add an origin and destination in visit order."
-        if (needsOrigin) return "Destination selected. Add an origin."
-        if (stops.length === 1) return "Add one more stop as the destination."
+        if (stops.length > maxStops) return qsTranslate("AmazonLocationService", "%1 supports up to %2 stops. Remove stops or change the travel mode.").arg(travelMode.label).arg(maxStops)
+        if (stops.length === 0) return qsTranslate("AmazonLocationService", "Add an origin and destination in visit order.")
+        if (needsOrigin) return qsTranslate("AmazonLocationService", "Destination selected. Add an origin.")
+        if (stops.length === 1) return qsTranslate("AmazonLocationService", "Add one more stop as the destination.")
         return connectionHint
     }
     readonly property string connectionHint: {
-        if (!regionField.validRegion) return "Enter an AWS Region (e.g. ap-northeast-1)."
-        if (!apiKey) return "Enter an Amazon Location API key."
+        if (!regionField.validRegion) return qsTranslate("AmazonLocationService", "Enter an AWS Region (e.g. ap-northeast-1).")
+        if (!apiKey) return qsTranslate("AmazonLocationService", "Enter an Amazon Location API key.")
         return ""
     }
 
@@ -86,7 +87,7 @@ Item {
         if (!picking || interaction !== "clicked") return false
         if (pending) return true
         const mapPoint = canvas.mapSettings.screenToCoordinate(screenPoint)
-        addStop(mapPoint, canvas.mapSettings.destinationCrs, "Map point")
+        addStop(mapPoint, canvas.mapSettings.destinationCrs, qsTranslate("AmazonLocationService", "Map point"))
         return true
     }
 
@@ -107,13 +108,13 @@ Item {
     function addPosition(position, label, asDestination = false, featureKey = "") {
         if (pending) return
         if (atLimit) {
-            window.displayToast(travelMode.label + " supports up to " + maxStops + " stops.")
+            window.displayToast(qsTranslate("AmazonLocationService", "%1 supports up to %2 stops.").arg(travelMode.label).arg(maxStops))
             return
         }
         // QML list delegates can supply a QVariantList instead of a JavaScript array.
         const coordinates = position && [position[0], position[1]]
         if (!Routes.validPosition(coordinates)) {
-            window.displayToast("Could not get coordinates for this stop.")
+            window.displayToast(qsTranslate("AmazonLocationService", "Could not get coordinates for this stop."))
             return
         }
         const stop = { position: coordinates, label: label, featureKey: featureKey }
@@ -126,7 +127,7 @@ Item {
         } else {
             stops = stops.concat([stop])
         }
-        window.displayToast("Added " + label + " to the route.")
+        window.displayToast(qsTranslate("AmazonLocationService", "Added %1 to the route.").arg(label))
     }
 
     function mapCenter() {
@@ -150,7 +151,7 @@ Item {
         if (!preview || !canAddStop) return
         const place = preview
         preview = null
-        if (!stops.length && currentPosition) addPosition(currentPosition, "Current location")
+        if (!stops.length && currentPosition) addPosition(currentPosition, qsTranslate("AmazonLocationService", "Current location"))
         addPosition(place.position, place.label, true)
         panel.open()
     }
@@ -164,9 +165,9 @@ Item {
     }
 
     function stopRole(index) {
-        if (needsOrigin) return "Destination"
-        if (index === 0) return "Origin"
-        return index === stops.length - 1 ? "Destination" : "Stop"
+        if (needsOrigin) return qsTranslate("AmazonLocationService", "Destination")
+        if (index === 0) return qsTranslate("AmazonLocationService", "Origin")
+        return index === stops.length - 1 ? qsTranslate("AmazonLocationService", "Destination") : qsTranslate("AmazonLocationService", "Stop")
     }
 
     onStopsChanged: {
@@ -241,9 +242,9 @@ Item {
                 fitRouteOnMap(geometry)
                 picking = false
                 panel.close()
-                window.displayToast(travelMode.label + " route with " + stops.length + " stops displayed.")
+                window.displayToast(qsTranslate("AmazonLocationService", "%1 route with %2 stops displayed.").arg(travelMode.label).arg(stops.length))
             } catch (error) {
-                message = error.message
+                message = error instanceof SyntaxError ? qsTranslate("AmazonLocationService", "Could not read the route response.") : error.message
             }
         })
     }
@@ -262,9 +263,9 @@ Item {
                     stops = result.stops
                     undoStops = before
                 }
-                optimizeNote = (result.changed ? "Visit order optimized" : "Visit order is already optimal") + result.summary + "."
+                optimizeNote = (result.changed ? qsTranslate("AmazonLocationService", "Visit order optimized%1.") : qsTranslate("AmazonLocationService", "Visit order is already optimal%1.")).arg(result.summary)
             } catch (error) {
-                message = error.message
+                message = error instanceof SyntaxError ? qsTranslate("AmazonLocationService", "Could not read the optimization result.") : error.message
             }
         })
     }
@@ -279,7 +280,7 @@ Item {
         region: plugin.region
         apiKey: plugin.apiKey
         onFailed: reason => plugin.message = reason
-        onRejected: (status, responseText) => plugin.message = Routes.rejection("Could not find a route", status, responseText)
+        onRejected: (status, responseText) => plugin.message = Routes.rejection(qsTranslate("AmazonLocationService", "Could not find a route"), status, responseText)
     }
 
     LocationRequest {
@@ -322,7 +323,7 @@ Item {
         statusBadge.bottomMargin: 0
         statusBadge.rightMargin: 0
         Accessible.name: plugin.serviceName
-        Accessible.description: checked ? "Hide search buttons" : "Show search buttons"
+        Accessible.description: checked ? qsTranslate("AmazonLocationService", "Hide search buttons") : qsTranslate("AmazonLocationService", "Show search buttons")
         ToolTip.text: plugin.serviceName
         ToolTip.visible: hovered && !checked
         ToolTip.delay: 600
@@ -343,7 +344,7 @@ Item {
 
     SearchToolButton {
         id: placeButton
-        text: "Place Search"
+        text: qsTranslate("AmazonLocationService", "Place Search")
         iconSource: Qt.resolvedUrl("poi-search.svg")
         enabled: !plugin.pending
         onClicked: plugin.openPlaces(false)
@@ -351,7 +352,7 @@ Item {
 
     SearchToolButton {
         id: routeButton
-        text: "Route Search"
+        text: qsTranslate("AmazonLocationService", "Route Search")
         iconSource: Qt.resolvedUrl("icon.svg")
         onClicked: {
             plugin.picking = false
@@ -427,7 +428,7 @@ Item {
                     horizontalPadding: 0
                     leftPadding: horizontalPadding
                     rightPadding: horizontalPadding
-                    Accessible.name: "Close place details"
+                    Accessible.name: qsTranslate("AmazonLocationService", "Close place details")
                     Layout.minimumWidth: plugin.touchHeight
                     Layout.minimumHeight: plugin.touchHeight
                     onClicked: plugin.preview = null
@@ -444,9 +445,9 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 LocationButton {
-                    text: plugin.atLimit ? "Stop limit reached" :
-                        !plugin.stops.length && plugin.currentPosition ? "Route from current location" :
-                        plugin.stops.length && !plugin.needsOrigin ? "Add as destination" : "Route to here"
+                    text: plugin.atLimit ? qsTranslate("AmazonLocationService", "Stop limit reached") :
+                        !plugin.stops.length && plugin.currentPosition ? qsTranslate("AmazonLocationService", "Route from current location") :
+                        plugin.stops.length && !plugin.needsOrigin ? qsTranslate("AmazonLocationService", "Add as destination") : qsTranslate("AmazonLocationService", "Route to here")
                     Layout.fillWidth: true
                     leftPadding: 8
                     rightPadding: 8
@@ -456,7 +457,7 @@ Item {
                     onClicked: plugin.usePreview()
                 }
                 LocationButton {
-                    text: "Back to results"
+                    text: qsTranslate("AmazonLocationService", "Back to results")
                     Layout.fillWidth: true
                     onClicked: {
                         plugin.preview = null
@@ -477,7 +478,7 @@ Item {
         height: Math.max(implicitHeight, plugin.touchHeight)
         visible: plugin.picking && plugin.stops.length >= 2
         enabled: !plugin.pending
-        text: plugin.pending ? "Finding route…" : plugin.searchHint ? "Enter settings" : "Find route"
+        text: plugin.pending ? qsTranslate("AmazonLocationService", "Finding route…") : plugin.searchHint ? qsTranslate("AmazonLocationService", "Enter settings") : qsTranslate("AmazonLocationService", "Find route")
         Accessible.description: plugin.statusText
         primary: true
         onClicked: {
@@ -505,7 +506,7 @@ Item {
     component PanelHeader: Rectangle {
         id: header
         property string title
-        property string dismissText: "Close"
+        property string dismissText: qsTranslate("AmazonLocationService", "Close")
         property bool primaryDismiss: false
         signal dismissed()
         Layout.fillWidth: true
@@ -566,7 +567,7 @@ Item {
         text: step < 0 ? "↑" : "↓"
         visible: plugin.reorderable
         enabled: !plugin.pending && target >= 0 && target < plugin.stops.length
-        Accessible.name: "Move stop " + (stopIndex + 1) + (step < 0 ? " up" : " down")
+        Accessible.name: (step < 0 ? qsTranslate("AmazonLocationService", "Move stop %1 up") : qsTranslate("AmazonLocationService", "Move stop %1 down")).arg(stopIndex + 1)
         onClicked: plugin.moveStop(stopIndex, target)
         Layout.preferredWidth: plugin.touchHeight
         Layout.minimumHeight: plugin.touchHeight
@@ -683,7 +684,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            PanelHeader { title: "Route Search"; onDismissed: panel.close() }
+            PanelHeader { title: qsTranslate("AmazonLocationService", "Route Search"); onDismissed: panel.close() }
             ScrollView {
                 id: form
                 Layout.fillWidth: true
@@ -698,8 +699,8 @@ Item {
                     spacing: 4
                     RowLayout {
                         Layout.fillWidth: true
-                        SectionTitle { text: "Travel mode"; Layout.topMargin: 0 }
-                        LocationButton { text: "Settings"; enabled: !plugin.pending; onClicked: settingsPopup.open() }
+                        SectionTitle { text: qsTranslate("AmazonLocationService", "Travel mode"); Layout.topMargin: 0 }
+                        LocationButton { text: qsTranslate("AmazonLocationService", "Settings"); enabled: !plugin.pending; onClicked: settingsPopup.open() }
                     }
                     GridLayout {
                         id: travelModeGrid
@@ -740,7 +741,7 @@ Item {
                         rowSpacing: 0
                         Label {
                             Layout.columnSpan: routeChoices.columns
-                            text: "Route preference"
+                            text: qsTranslate("AmazonLocationService", "Route preference")
                         }
                         Repeater {
                             model: Routes.routeCriteria
@@ -748,7 +749,7 @@ Item {
                                 required property string modelData
                                 Layout.minimumHeight: plugin.touchHeight
                                 text: Routes.criterionLabel(modelData)
-                                Accessible.name: "Route preference: " + text
+                                Accessible.name: qsTranslate("AmazonLocationService", "Route preference: %1").arg(text)
                                 checked: plugin.routeCriterion === modelData
                                 onClicked: plugin.routePreference = modelData
                             }
@@ -759,15 +760,15 @@ Item {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
                         color: QfTheme.secondaryTextColor
-                        text: plugin.routeCriterion ? plugin.travelMode.label + " routes prioritize travel time."
-                            : "Choose an origin and destination. Departure is now."
+                        text: plugin.routeCriterion ? qsTranslate("AmazonLocationService", "%1 routes prioritize travel time.").arg(plugin.travelMode.label)
+                            : qsTranslate("AmazonLocationService", "Choose an origin and destination. Departure is now.")
                     }
-                    SectionTitle { text: plugin.needsOrigin ? "Choose origin" : "Add stops" }
+                    SectionTitle { text: plugin.needsOrigin ? qsTranslate("AmazonLocationService", "Choose origin") : qsTranslate("AmazonLocationService", "Add stops") }
                     LocationButton {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: plugin.canAddStop
-                        text: plugin.needsOrigin ? "Search for origin" : plugin.stops.length > 1 ? "Search for next destination" : "Search for destination"
+                        text: plugin.needsOrigin ? qsTranslate("AmazonLocationService", "Search for origin") : plugin.stops.length > 1 ? qsTranslate("AmazonLocationService", "Search for next destination") : qsTranslate("AmazonLocationService", "Search for destination")
                         icon.source: Qt.resolvedUrl("icons/Search.svg")
                         onClicked: plugin.openPlaces(true)
                     }
@@ -775,22 +776,22 @@ Item {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: !!plugin.currentPosition && plugin.canAddStop
-                        text: plugin.needsOrigin || !plugin.stops.length ? "Use current location as origin" : "Add current location"
+                        text: plugin.needsOrigin || !plugin.stops.length ? qsTranslate("AmazonLocationService", "Use current location as origin") : qsTranslate("AmazonLocationService", "Add current location")
                         icon.source: Qt.resolvedUrl("icons/CurrentLocation.svg")
                         leftPadding: 8
                         rightPadding: 8
-                        onClicked: plugin.addPosition(plugin.currentPosition, "Current location")
+                        onClicked: plugin.addPosition(plugin.currentPosition, qsTranslate("AmazonLocationService", "Current location"))
                     }
                     Label {
                         Layout.fillWidth: true
                         visible: !plugin.currentPosition
                         wrapMode: Text.Wrap
-                        text: plugin.gnss && plugin.gnss.active ? "Waiting for a location fix." : "Turn on positioning in QField to use your current location."
+                        text: plugin.gnss && plugin.gnss.active ? qsTranslate("AmazonLocationService", "Waiting for a location fix.") : qsTranslate("AmazonLocationService", "Turn on positioning in QField to use your current location.")
                         color: QfTheme.secondaryTextColor
                         font: QfTheme.tipFont
                     }
                     LocationButton {
-                        text: "Add stops from map"
+                        text: qsTranslate("AmazonLocationService", "Add stops from map")
                         icon.source: Qt.resolvedUrl("icons/MapPin.svg")
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
@@ -798,17 +799,17 @@ Item {
                         onClicked: {
                             panel.close()
                             plugin.picking = true
-                            plugin.window.displayToast("Tap the map in visit order. Find a route after adding at least two stops.")
+                            plugin.window.displayToast(qsTranslate("AmazonLocationService", "Tap the map in visit order. Find a route after adding at least two stops."))
                         }
                     }
                     LocationButton {
                         id: layerToggle
                         checkable: true
                         Layout.fillWidth: true
-                        text: checked ? "Add from layer ▴" : "Add from layer ▾"
+                        text: checked ? qsTranslate("AmazonLocationService", "Add from layer ▴") : qsTranslate("AmazonLocationService", "Add from layer ▾")
                         icon.source: Qt.resolvedUrl("icons/Layers.svg")
                     }
-                    Label { id: layerLabel; text: "Layer for feature selection"; visible: layerToggle.checked }
+                    Label { id: layerLabel; text: qsTranslate("AmazonLocationService", "Layer for feature selection"); visible: layerToggle.checked }
                     ComboBox {
                         id: layers
                         visible: layerToggle.checked
@@ -817,11 +818,11 @@ Item {
                         model: QfMapLayerModel { project: qgisProject; filters: Qgis.LayerFilters.HasGeometry }
                         textRole: "Name"
                         valueRole: "LayerPointer"
-                        displayText: count ? currentText : "No suitable layers"
+                        displayText: count ? currentText : qsTranslate("AmazonLocationService", "No suitable layers")
                     }
                     LocationButton {
                         visible: layerToggle.checked
-                        text: "Select layer features"
+                        text: qsTranslate("AmazonLocationService", "Select layer features")
                         icon.source: Qt.resolvedUrl("icons/SelectFeatures.svg")
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
@@ -830,7 +831,7 @@ Item {
                     }
                     SectionTitle {
                         Layout.topMargin: 8
-                        text: "Visit order (" + plugin.stops.length + " / " + plugin.maxStops + ")"
+                        text: qsTranslate("AmazonLocationService", "Visit order (%1 / %2)").arg(plugin.stops.length).arg(plugin.maxStops)
                     }
                     ColumnLayout {
                         visible: plugin.optimizable
@@ -838,7 +839,7 @@ Item {
                         spacing: 4
                         Label {
                             id: visitOrderLabel
-                            text: "Visit order preference"
+                            text: qsTranslate("AmazonLocationService", "Visit order preference")
                         }
                         ComboBox {
                             id: orderChoice
@@ -848,7 +849,7 @@ Item {
                             Accessible.name: visitOrderLabel.text
                             readonly property var criteria: [""].concat(Routes.routeCriteria)
                             model: criteria.map(value => value ? Routes.criterionLabel(value)
-                                : "Same as route (" + Routes.criterionLabel(plugin.routeCriterion) + ")")
+                                : qsTranslate("AmazonLocationService", "Same as route (%1)").arg(Routes.criterionLabel(plugin.routeCriterion)))
                             currentIndex: criteria.indexOf(plugin.visitOrderOverride)
                             onActivated: index => plugin.visitOrderOverride = criteria[index]
                         }
@@ -857,7 +858,7 @@ Item {
                             Label {
                                 id: fixedEndLabel
                                 Layout.fillWidth: true
-                                text: "Keep last stop as destination"
+                                text: qsTranslate("AmazonLocationService", "Keep last stop as destination")
                                 wrapMode: Text.Wrap
                             }
                             Switch {
@@ -872,9 +873,9 @@ Item {
                             Layout.fillWidth: true
                             wrapMode: Text.Wrap
                             text: plugin.fixedEnd && plugin.stops.length < Routes.minOptimizeStops(true)
-                                ? "At least " + Routes.minOptimizeStops(true) + " stops are needed to keep the destination fixed."
-                                : plugin.fixedEnd ? "Keep the origin and destination fixed; reorder the stops in between."
-                                : "Keep the origin fixed; reorder the remaining stops."
+                                ? qsTranslate("AmazonLocationService", "At least %1 stops are needed to keep the destination fixed.").arg(Routes.minOptimizeStops(true))
+                                : plugin.fixedEnd ? qsTranslate("AmazonLocationService", "Keep the origin and destination fixed; reorder the stops in between.")
+                                : qsTranslate("AmazonLocationService", "Keep the origin fixed; reorder the remaining stops.")
                             color: QfTheme.secondaryTextColor
                             font: QfTheme.tipFont
                         }
@@ -882,7 +883,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.minimumHeight: plugin.touchHeight
                             enabled: plugin.canOptimize
-                            text: plugin.optimizing ? "Optimizing…" : "Optimize order"
+                            text: plugin.optimizing ? qsTranslate("AmazonLocationService", "Optimizing…") : qsTranslate("AmazonLocationService", "Optimize order")
                             onClicked: plugin.optimize()
                         }
                         Label {
@@ -894,7 +895,7 @@ Item {
                         LocationButton {
                             visible: !!plugin.undoStops
                             enabled: !plugin.pending
-                            text: "Restore original order"
+                            text: qsTranslate("AmazonLocationService", "Restore original order")
                             Layout.minimumHeight: plugin.touchHeight
                             onClicked: plugin.undoOptimize()
                         }
@@ -903,7 +904,7 @@ Item {
                         visible: plugin.reorderable
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: "Drag the numbers up or down to reorder."
+                        text: qsTranslate("AmazonLocationService", "Drag the numbers up or down to reorder.")
                         color: QfTheme.secondaryTextColor
                     }
                     Repeater {
@@ -944,8 +945,8 @@ Item {
                     RowLayout {
                         visible: plugin.stops.length > 0
                         enabled: !plugin.pending
-                        LocationButton { text: "Remove last"; destructive: true; onClicked: plugin.stops = plugin.stops.slice(0, -1) }
-                        LocationButton { text: "Clear all"; destructive: true; onClicked: plugin.stops = [] }
+                        LocationButton { text: qsTranslate("AmazonLocationService", "Remove last"); destructive: true; onClicked: plugin.stops = plugin.stops.slice(0, -1) }
+                        LocationButton { text: qsTranslate("AmazonLocationService", "Clear all"); destructive: true; onClicked: plugin.stops = [] }
                     }
                 }
             }
@@ -958,7 +959,7 @@ Item {
                     Layout.fillWidth: true
                     visible: !!plugin.pending
                     indeterminate: visible
-                    Accessible.name: plugin.optimizing ? "Optimizing visit order" : "Finding route"
+                    Accessible.name: plugin.optimizing ? qsTranslate("AmazonLocationService", "Optimizing visit order") : qsTranslate("AmazonLocationService", "Finding route")
                 }
                 Label {
                     Layout.fillWidth: true
@@ -973,8 +974,8 @@ Item {
                     Layout.minimumHeight: 48
                     enabled: !plugin.pending && !plugin.searchHint
                     Accessible.description: plugin.statusText
-                    text: routeRequest.pending ? "Finding route…"
-                          : "Find route" + (width < 250 ? "\n" : " · ") + plugin.travelMode.label
+                    text: routeRequest.pending ? qsTranslate("AmazonLocationService", "Finding route…")
+                          : qsTranslate("AmazonLocationService", "Find route") + (width < 250 ? "\n" : " · ") + plugin.travelMode.label
                             + (plugin.routeCriterion ? " · " + Routes.criterionLabel(plugin.routeCriterion) : "")
                     topInset: 0
                     bottomInset: 0
@@ -1015,8 +1016,8 @@ Item {
             anchors.fill: parent
             spacing: 0
             PanelHeader {
-                title: places.forRoute ? (plugin.needsOrigin ? "Find Origin" : "Find Destination") : "Place Search"
-                dismissText: places.forRoute ? "Back" : "Close"
+                title: places.forRoute ? (plugin.needsOrigin ? qsTranslate("AmazonLocationService", "Find Origin") : qsTranslate("AmazonLocationService", "Find Destination")) : qsTranslate("AmazonLocationService", "Place Search")
+                dismissText: places.forRoute ? qsTranslate("AmazonLocationService", "Back") : qsTranslate("AmazonLocationService", "Close")
                 onDismissed: places.close()
             }
             PlaceSearch {
@@ -1029,7 +1030,7 @@ Item {
                 searchCenter: plugin.mapCenter
                 gutter: plugin.gutter
                 touchHeight: plugin.touchHeight
-                selectionHint: places.forRoute ? "Select a place to add to the route." : "Select a place to show it on the map."
+                selectionHint: places.forRoute ? qsTranslate("AmazonLocationService", "Select a place to add to the route.") : qsTranslate("AmazonLocationService", "Select a place to show it on the map.")
                 onSettingsRequested: settingsPopup.open()
                 onChosen: place => {
                     places.close()
@@ -1046,7 +1047,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            PanelHeader { title: "Settings"; dismissText: "Done"; primaryDismiss: true; onDismissed: settingsPopup.close() }
+            PanelHeader { title: qsTranslate("AmazonLocationService", "Settings"); dismissText: qsTranslate("AmazonLocationService", "Done"); primaryDismiss: true; onDismissed: settingsPopup.close() }
             ScrollView {
                 id: settingsForm
                 Layout.fillWidth: true
@@ -1056,7 +1057,7 @@ Item {
                 contentWidth: availableWidth
                 ColumnLayout {
                     width: settingsForm.availableWidth
-                    Label { id: regionLabel; text: "AWS Region" }
+                    Label { id: regionLabel; text: qsTranslate("AmazonLocationService", "AWS Region") }
                     TextField {
                         id: regionField
                         Layout.fillWidth: true
@@ -1066,7 +1067,7 @@ Item {
                         readonly property bool validRegion: /^[a-z]{2}(-[a-z0-9]+)+-[0-9]+$/.test(text.trim())
                         onTextEdited: plugin.message = ""
                     }
-                    Label { id: keyLabel; text: "Amazon Location API key" }
+                    Label { id: keyLabel; text: qsTranslate("AmazonLocationService", "Amazon Location API key") }
                     TextField {
                         id: keyField
                         Layout.fillWidth: true
@@ -1079,7 +1080,7 @@ Item {
                     Label {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: plugin.connectionHint || "These settings apply to place and route searches."
+                        text: plugin.connectionHint || qsTranslate("AmazonLocationService", "These settings apply to place and route searches.")
                         color: QfTheme.secondaryTextColor
                     }
                 }
@@ -1121,7 +1122,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            PanelHeader { title: "Select Features"; dismissText: "Done"; primaryDismiss: true; onDismissed: features.close() }
+            PanelHeader { title: qsTranslate("AmazonLocationService", "Select Features"); dismissText: qsTranslate("AmazonLocationService", "Done"); primaryDismiss: true; onDismissed: features.close() }
             RowLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: plugin.gutter
@@ -1135,7 +1136,7 @@ Item {
                     wrapMode: Text.Wrap
                 }
                 Label {
-                    text: plugin.stops.length + " / " + plugin.maxStops + " route stops"
+                    text: qsTranslate("AmazonLocationService", "%1 / %2 route stops").arg(plugin.stops.length).arg(plugin.maxStops)
                     font: QfTheme.tipFont
                     color: QfTheme.secondaryTextColor
                 }
@@ -1146,8 +1147,8 @@ Item {
                 Layout.topMargin: 4
                 Layout.bottomMargin: 4
                 wrapMode: Text.Wrap
-                text: plugin.atLimit ? "Stop limit reached (" + plugin.maxStops + ")."
-                    : "Tap a feature to add a stop. Tap again to revisit."
+                text: plugin.atLimit ? qsTranslate("AmazonLocationService", "Stop limit reached (%1).").arg(plugin.maxStops)
+                    : qsTranslate("AmazonLocationService", "Tap a feature to add a stop. Tap again to revisit.")
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -1157,15 +1158,15 @@ Item {
                 TextField {
                     id: featureFilter
                     Layout.fillWidth: true
-                    placeholderText: "Filter by name or ID"
+                    placeholderText: qsTranslate("AmazonLocationService", "Filter by name or ID")
                     Accessible.name: placeholderText
                     onTextEdited: filterDelay.restart()
                     onAccepted: Qt.inputMethod.hide()
                 }
                 LocationButton {
-                    text: "Clear"
+                    text: qsTranslate("AmazonLocationService", "Clear")
                     Layout.minimumHeight: plugin.touchHeight
-                    Accessible.name: "Clear feature filter"
+                    Accessible.name: qsTranslate("AmazonLocationService", "Clear feature filter")
                     visible: featureFilter.text.length > 0
                     onClicked: {
                         featureFilter.clear()
@@ -1176,7 +1177,7 @@ Item {
             Label {
                 Layout.leftMargin: plugin.gutter
                 visible: matches.count === 0
-                text: featureFilter.text.trim() ? "No matching features." : "There are no features in this layer."
+                text: featureFilter.text.trim() ? qsTranslate("AmazonLocationService", "No matching features.") : qsTranslate("AmazonLocationService", "There are no features in this layer.")
             }
             ListView {
                 id: featureList
@@ -1194,8 +1195,8 @@ Item {
                     readonly property string featureKey: model.currentLayer ? model.currentLayer.id + ":" + model.featureId : ""
                     readonly property var visits: features.visitsByFeature[featureKey] || []
                     readonly property bool added: visits.length > 0
-                    readonly property string visitLabel: visits.length > 1 ? "Visits " + visits.join(", ")
-                        : added ? "Visit " + visits[0] + " · " + plugin.stopRole(visits[0] - 1) : ""
+                    readonly property string visitLabel: visits.length > 1 ? qsTranslate("AmazonLocationService", "Visits %1").arg(visits.join(", "))
+                        : added ? qsTranslate("AmazonLocationService", "Visit %1 · %2").arg(visits[0]).arg(plugin.stopRole(visits[0] - 1)) : ""
                     width: ListView.view.width
                     padding: 12
                     implicitHeight: Math.max(plugin.touchHeight, implicitContentHeight + topPadding + bottomPadding)
@@ -1203,7 +1204,7 @@ Item {
                     opacity: !enabled && !added ? 0.6 : 1
                     text: model.featureName || ("FID " + model.featureId)
                     Accessible.name: added ? text + ", " + visitLabel : text
-                    Accessible.description: added ? "Add another visit" : "Add to route"
+                    Accessible.description: added ? qsTranslate("AmazonLocationService", "Add another visit") : qsTranslate("AmazonLocationService", "Add to route")
                     background: Rectangle {
                         radius: 8
                         color: featureCard.down || featureCard.added ? plugin.colors.secondary.background : QfTheme.groupBoxSurfaceColor

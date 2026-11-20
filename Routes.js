@@ -1,10 +1,10 @@
 var travelModes = [
-    { id: "Car", label: "Car" },
-    { id: "Pedestrian", label: "Walking" },
-    { id: "Scooter", label: "Scooter" },
-    { id: "Truck", label: "Truck" },
-    { id: "Transit", label: "Public transit" },
-    { id: "Intermodal", label: "Intermodal" }
+    { id: "Car", label: qsTranslate("AmazonLocationService", "Car") },
+    { id: "Pedestrian", label: qsTranslate("AmazonLocationService", "Walking") },
+    { id: "Scooter", label: qsTranslate("AmazonLocationService", "Scooter") },
+    { id: "Truck", label: qsTranslate("AmazonLocationService", "Truck") },
+    { id: "Transit", label: qsTranslate("AmazonLocationService", "Public transit") },
+    { id: "Intermodal", label: qsTranslate("AmazonLocationService", "Intermodal") }
 ]
 
 var routeCriteria = ["ShortestRoute", "FastestRoute"]
@@ -23,7 +23,7 @@ function routeCriterion(mode, preference) {
 }
 
 function criterionLabel(criterion) {
-    return criterion === "ShortestRoute" ? "Shortest" : "Fastest"
+    return criterion === "ShortestRoute" ? qsTranslate("AmazonLocationService", "Shortest") : qsTranslate("AmazonLocationService", "Fastest")
 }
 
 function stopLimit(mode) {
@@ -41,7 +41,7 @@ function usableStops(stops, mode, min) {
 
 function requestBody(stops, mode, preference) {
     if (!usableStops(stops, mode, 2))
-        throw new Error("Select valid stops for the chosen travel mode.")
+        throw new Error(qsTranslate("AmazonLocationService", "Select valid stops for the chosen travel mode."))
     const body = {
         Origin: stops[0].position,
         Destination: stops[stops.length - 1].position,
@@ -62,29 +62,29 @@ function routeWkt(response, body) {
     const route = response.Routes && response.Routes[0]
     if (!route || !Array.isArray(route.Legs) || !route.Legs.length
             || (body.Waypoints && route.Legs.length !== body.Waypoints.length + 1))
-        throw new Error("No route was found for all legs.")
+        throw new Error(qsTranslate("AmazonLocationService", "No route was found for all legs."))
     const legs = route.Legs.map(leg => {
         const line = leg.Geometry && leg.Geometry.LineString
         if (!Array.isArray(line) || line.length < 2 || !line.every(validPosition))
-            throw new Error("Could not read the route coordinates.")
+            throw new Error(qsTranslate("AmazonLocationService", "Could not read the route coordinates."))
         return "(" + line.map(p => p[0] + " " + p[1]).join(",") + ")"
     })
     return "MULTILINESTRING(" + legs.join(",") + ")"
 }
 
 function rejection(failed, status, responseText) {
-    const prefix = failed + " (HTTP " + status + "). "
+    const prefix = qsTranslate("AmazonLocationService", "%1 (HTTP %2).").arg(failed).arg(status)
     if (status === 400) {
         try {
             const error = JSON.parse(responseText)
             const detail = error && (error.message || error.Message)
-            if (typeof detail === "string" && detail.trim()) return prefix + detail.trim()
+            if (typeof detail === "string" && detail.trim()) return prefix + " " + detail.trim()
         } catch (e) {
             // A proxy may return plain text or an empty body.
         }
-        return prefix + "Check the stops and travel mode."
+        return prefix + " " + qsTranslate("AmazonLocationService", "Check the stops and travel mode.")
     }
-    return prefix + "Check the stops, region, and API key permissions."
+    return prefix + " " + qsTranslate("AmazonLocationService", "Check the stops, region, and API key permissions.")
 }
 
 var optimizePerimeterKm = 500 // OptimizeWaypoints rejects stops inside a bounding box with a longer perimeter.
@@ -95,7 +95,7 @@ function minOptimizeStops(fixedEnd) {
 
 function optimizeBody(stops, mode, fixedEnd, criterion) {
     if (!supportsWaypoints(mode) || !usableStops(stops, mode, minOptimizeStops(fixedEnd)))
-        throw new Error("Select a travel mode and stops that support visit order optimization.")
+        throw new Error(qsTranslate("AmazonLocationService", "Select a travel mode and stops that support visit order optimization."))
     const end = fixedEnd ? stops.length - 1 : stops.length
     const body = {
         Origin: stops[0].position,
@@ -115,13 +115,14 @@ function optimizedStops(response, stops, fixedEnd) {
         const names = response.ImpedingWaypoints
             .map(w => w && stops[w.Id === "Origin" ? 0 : w.Id === "Destination" ? stops.length - 1 : Number(w.Id)])
             .filter(Boolean).map(s => '"' + s.label + '"')
-        throw new Error("Could not optimize visit order."
-            + (names.length ? " No valid order includes " + names.join(", ") + "." : ""))
+        throw new Error(names.length
+            ? qsTranslate("AmazonLocationService", "Could not optimize visit order. No valid order includes %1.").arg(names.join(", "))
+            : qsTranslate("AmazonLocationService", "Could not optimize visit order."))
     }
     const order = (Array.isArray(response.OptimizedWaypoints) ? response.OptimizedWaypoints : [])
         .map(w => Number(w && w.Id)).filter(i => Number.isInteger(i) && i >= 1 && i < end)
     if (order.length !== end - 1 || order.some((id, i) => order.indexOf(id) !== i))
-        throw new Error("Could not read the optimization result.")
+        throw new Error(qsTranslate("AmazonLocationService", "Could not read the optimization result."))
     return {
         stops: [stops[0]].concat(order.map(i => stops[i]), stops.slice(end)),
         changed: order.some((id, i) => id !== i + 1),
@@ -130,17 +131,14 @@ function optimizedStops(response, stops, fixedEnd) {
 }
 
 function optimizeRejection(status, stops) {
-    const failed = "Could not optimize visit order"
     if (status === 403)
-        return failed + " (HTTP 403). Check the API key's expiration date, region, and geo-routes:OptimizeWaypoints permission."
-    if (status !== 400) return rejection(failed, status)
+        return qsTranslate("AmazonLocationService", "Could not optimize visit order (HTTP 403). Check the API key's expiration date, region, and geo-routes:OptimizeWaypoints permission.")
+    if (status !== 400) return rejection(qsTranslate("AmazonLocationService", "Could not optimize visit order"), status)
     // The service measures the perimeter its own way, so only a clear excess is reported as the cause.
     const perimeter = Math.round(boundsPerimeterKm(stops.map(s => s.position)))
     return perimeter > optimizePerimeterKm
-        ? failed + ". The bounding box around all stops has a perimeter of approximately " + perimeter
-            + " km, exceeding the " + optimizePerimeterKm + " km limit. Remove stops or reduce the area."
-        : failed + " (HTTP 400). Check whether stops are far from roads or spread across a wide area (perimeter over "
-            + optimizePerimeterKm + " km)."
+        ? qsTranslate("AmazonLocationService", "Could not optimize visit order. The bounding box around all stops has a perimeter of approximately %1 km, exceeding the %2 km limit. Remove stops or reduce the area.").arg(perimeter).arg(optimizePerimeterKm)
+        : qsTranslate("AmazonLocationService", "Could not optimize visit order (HTTP 400). Check whether stops are far from roads or spread across a wide area (perimeter over %1 km).").arg(optimizePerimeterKm)
 }
 
 // Perimeter of the longitude-latitude box around the positions, with its width taken at the middle latitude.
@@ -157,13 +155,18 @@ function tripSummary(distance, duration) {
     if (!Number.isFinite(distance) || !Number.isFinite(duration)) return ""
     const minutes = Math.max(1, Math.round(duration / 60))
     const hours = Math.floor(minutes / 60)
-    return " (about " + (distance < 1000 ? Math.round(distance) + " m" : (distance / 1000).toFixed(1) + " km")
-        + ", " + (hours ? hours + " hr" : "")
-        + (hours && minutes % 60 === 0 ? "" : (hours ? " " : "") + minutes % 60 + " min") + ")"
+    const length = distance < 1000 ? qsTranslate("AmazonLocationService", "%1 m").arg(Math.round(distance))
+                                   : qsTranslate("AmazonLocationService", "%1 km").arg((distance / 1000).toFixed(1))
+    const remainder = minutes % 60
+    let time
+    if (!hours) time = qsTranslate("AmazonLocationService", "%1 min").arg(minutes)
+    else if (!remainder) time = qsTranslate("AmazonLocationService", "%1 hr").arg(hours)
+    else time = qsTranslate("AmazonLocationService", "%1 hr %2 min").arg(hours).arg(remainder)
+    return qsTranslate("AmazonLocationService", " (about %1, %2)").arg(length).arg(time)
 }
 
 function placeResults(response) {
-    if (!Array.isArray(response.ResultItems)) throw new Error("Could not read the search results.")
+    if (!Array.isArray(response.ResultItems)) throw new Error(qsTranslate("AmazonLocationService", "Could not read the search results."))
     return response.ResultItems.filter(item => item && validPosition(item.Position)).map(item => {
         const address = (item.Address && item.Address.Label) || ""
         const label = item.Title || address

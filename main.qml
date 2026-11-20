@@ -52,6 +52,7 @@ Item {
     readonly property string apiKey: keyField.text.trim()
     readonly property int maxStops: Routes.stopLimit(travelMode.id)
     readonly property bool atLimit: stops.length >= maxStops
+    readonly property string limitText: qsTranslate("AmazonLocationService", "%1 supports up to %2 stops.").arg(travelMode.label).arg(maxStops)
     readonly property bool canAddStop: !atLimit && !pending
     readonly property bool reorderable: stops.length > 1
     readonly property bool optimizable: Routes.supportsWaypoints(travelMode.id)
@@ -84,7 +85,7 @@ Item {
 
     function pickPoint(screenPoint, device, interaction) {
         if (!picking || interaction !== "clicked") return false
-        if (!pending) addMapPoint(screenPoint)
+        addMapPoint(screenPoint)
         return true
     }
 
@@ -110,7 +111,7 @@ Item {
     function addPosition(position, label, asDestination = false, featureKey = "") {
         if (pending) return
         if (atLimit) {
-            window.displayToast(qsTranslate("AmazonLocationService", "%1 supports up to %2 stops.").arg(travelMode.label).arg(maxStops))
+            window.displayToast(limitText)
             return
         }
         // QML list delegates can supply a QVariantList instead of a JavaScript array.
@@ -413,15 +414,9 @@ Item {
         }
     }
 
-    Pane {
-        parent: plugin.canvas.parent
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: plugin.overlayBottomMargin
-        width: Math.min(410, parent.width - 2 * plugin.gutter)
+    MapCard {
         visible: !!plugin.preview
         padding: 12
-        background: Rectangle { radius: 8; color: QfTheme.groupBoxSurfaceColor; border.color: QfTheme.controlBorderColor }
         contentItem: ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true
@@ -479,17 +474,12 @@ Item {
 
     QfMultiFeatureListModel { id: matches }
 
-    Pane {
+    MapCard {
         id: guide
-        parent: plugin.canvas.parent
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
         // On narrow maps, keep the guide above QField's bottom corner controls.
         anchors.bottomMargin: plugin.overlayBottomMargin + (parent.width - width < 2 * (plugin.touchHeight + plugin.gutter) ? plugin.touchHeight : 0)
-        width: Math.min(410, parent.width - 2 * plugin.gutter)
         visible: plugin.picking
         padding: 8
-        background: Rectangle { radius: 8; color: QfTheme.groupBoxSurfaceColor; border.color: QfTheme.controlBorderColor }
         contentItem: ColumnLayout {
             spacing: 0
             RowLayout {
@@ -500,7 +490,7 @@ Item {
                     wrapMode: Text.Wrap
                     color: QfTheme.mainTextColor
                     text: plugin.pending ? qsTranslate("AmazonLocationService", "Finding route…")
-                        : plugin.atLimit ? qsTranslate("AmazonLocationService", "%1 supports up to %2 stops.").arg(plugin.travelMode.label).arg(plugin.maxStops)
+                        : plugin.atLimit ? plugin.limitText
                         : !plugin.stops.length || plugin.needsOrigin ? qsTranslate("AmazonLocationService", "Tap the origin on the map, or move the map to align it with the crosshair.")
                         : qsTranslate("AmazonLocationService", "Tap the next destination, or move the map to align it with the crosshair.")
                 }
@@ -549,6 +539,15 @@ Item {
                 }
             }
         }
+    }
+
+    component MapCard: Pane {
+        parent: plugin.canvas.parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: plugin.overlayBottomMargin
+        width: Math.min(410, parent.width - 2 * plugin.gutter)
+        background: Rectangle { radius: 8; color: QfTheme.groupBoxSurfaceColor; border.color: QfTheme.controlBorderColor }
     }
 
     component RoutePopup: Popup {

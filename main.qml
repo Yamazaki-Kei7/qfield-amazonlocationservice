@@ -155,6 +155,14 @@ Item {
         panel.open()
     }
 
+    function removeStop(index) {
+        if (pending || index < 0 || index >= stops.length) return
+        const remaining = stops.slice()
+        const removed = remaining.splice(index, 1)[0]
+        stops = remaining
+        window.displayToast(qsTranslate("AmazonLocationService", "Removed %1 from the route.").arg(removed.label))
+    }
+
     function moveStop(from, to) {
         if (pending || from < 0 || from >= stops.length || to < 0 || to >= stops.length || from === to) return
         const reordered = stops.slice()
@@ -944,7 +952,7 @@ Item {
                     RowLayout {
                         visible: plugin.stops.length > 0
                         enabled: !plugin.pending
-                        LocationButton { text: qsTranslate("AmazonLocationService", "Remove last"); destructive: true; onClicked: plugin.stops = plugin.stops.slice(0, -1) }
+                        LocationButton { text: qsTranslate("AmazonLocationService", "Remove last"); destructive: true; onClicked: plugin.removeStop(plugin.stops.length - 1) }
                         LocationButton { text: qsTranslate("AmazonLocationService", "Clear all"); destructive: true; onClicked: plugin.stops = [] }
                     }
                 }
@@ -1146,8 +1154,8 @@ Item {
                 Layout.topMargin: 4
                 Layout.bottomMargin: 4
                 wrapMode: Text.Wrap
-                text: plugin.atLimit ? qsTranslate("AmazonLocationService", "Stop limit reached (%1).").arg(plugin.maxStops)
-                    : qsTranslate("AmazonLocationService", "Tap a feature to add a stop. Tap again to revisit.")
+                text: plugin.atLimit ? qsTranslate("AmazonLocationService", "Stop limit reached (%1). Tap × on a visit to remove it.").arg(plugin.maxStops)
+                    : qsTranslate("AmazonLocationService", "Tap a feature to add or revisit it. Tap × on a visit to remove it.")
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -1189,58 +1197,74 @@ Item {
                 spacing: 8
                 clip: true
                 model: matches
-                delegate: ItemDelegate {
+                delegate: Rectangle {
                     id: featureCard
                     readonly property string featureKey: model.currentLayer ? model.currentLayer.id + ":" + model.featureId : ""
                     readonly property var visits: features.visitsByFeature[featureKey] || []
                     readonly property bool added: visits.length > 0
-                    readonly property string visitLabel: visits.length > 1 ? qsTranslate("AmazonLocationService", "Visits %1").arg(visits.join(", "))
-                        : added ? qsTranslate("AmazonLocationService", "Visit %1 · %2").arg(visits[0]).arg(plugin.stopRole(visits[0] - 1)) : ""
                     width: ListView.view.width
-                    padding: 12
-                    implicitHeight: Math.max(plugin.touchHeight, implicitContentHeight + topPadding + bottomPadding)
-                    enabled: plugin.canAddStop
-                    opacity: !enabled && !added ? 0.6 : 1
-                    text: model.featureName || ("FID " + model.featureId)
-                    Accessible.name: added ? text + ", " + visitLabel : text
-                    Accessible.description: added ? qsTranslate("AmazonLocationService", "Add another visit") : qsTranslate("AmazonLocationService", "Add to route")
-                    background: Rectangle {
-                        radius: 8
-                        color: featureCard.down || featureCard.added ? plugin.colors.secondary.background : QfTheme.groupBoxSurfaceColor
-                        border.color: featureCard.added || featureCard.visualFocus ? plugin.colors.selected.background : QfTheme.controlBorderColor
-                        border.width: featureCard.visualFocus ? 2 : 1
-                    }
-                    contentItem: RowLayout {
-                        spacing: 12
-                        CircleBadge {
-                            minimumSize: 28
-                            text: featureCard.added ? "✓" : "+"
-                            color: featureCard.added ? plugin.colors.selected.foreground : plugin.colors.secondary.foreground
-                            fill: featureCard.added ? plugin.colors.selected.background : plugin.colors.secondary.background
-                            Accessible.ignored: true
-                        }
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-                            Label {
-                                Layout.fillWidth: true
-                                text: featureCard.text
-                                textFormat: Text.PlainText
-                                font: QfTheme.strongResultFont
-                                color: QfTheme.mainTextColor
-                                wrapMode: Text.Wrap
+                    height: cardContents.implicitHeight
+                    radius: 8
+                    color: addVisit.down || added ? plugin.colors.secondary.background : QfTheme.groupBoxSurfaceColor
+                    border.color: added || addVisit.visualFocus ? plugin.colors.selected.background : QfTheme.controlBorderColor
+                    border.width: addVisit.visualFocus ? 2 : 1
+
+                    Column {
+                        id: cardContents
+                        width: parent.width
+                        bottomPadding: featureCard.added ? 6 : 0
+                        ItemDelegate {
+                            id: addVisit
+                            width: parent.width
+                            padding: 12
+                            implicitHeight: Math.max(plugin.touchHeight, implicitContentHeight + topPadding + bottomPadding)
+                            enabled: plugin.canAddStop
+                            opacity: !enabled && !featureCard.added ? 0.6 : 1
+                            text: model.featureName || ("FID " + model.featureId)
+                            Accessible.description: featureCard.added ? qsTranslate("AmazonLocationService", "Add another visit") : qsTranslate("AmazonLocationService", "Add to route")
+                            background: null
+                            contentItem: RowLayout {
+                                spacing: 12
+                                CircleBadge {
+                                    minimumSize: 28
+                                    text: featureCard.added ? "✓" : "+"
+                                    color: featureCard.added ? plugin.colors.selected.foreground : plugin.colors.secondary.foreground
+                                    fill: featureCard.added ? plugin.colors.selected.background : plugin.colors.secondary.background
+                                    Accessible.ignored: true
+                                }
+                                Label {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    text: addVisit.text
+                                    textFormat: Text.PlainText
+                                    font: QfTheme.strongResultFont
+                                    color: QfTheme.mainTextColor
+                                    wrapMode: Text.Wrap
+                                }
                             }
-                            Label {
-                                visible: featureCard.added
-                                Layout.fillWidth: true
-                                text: featureCard.visitLabel
-                                color: plugin.colors.secondary.foreground
-                                font: QfTheme.tipFont
-                                wrapMode: Text.Wrap
+                            onClicked: plugin.addStop(QfGeometryUtils.centroid(model.geometry), model.crs, text, featureCard.featureKey)
+                        }
+                        Flow {
+                            leftPadding: addVisit.leftPadding
+                            rightPadding: addVisit.rightPadding
+                            width: parent.width
+                            spacing: 4
+                            visible: featureCard.added
+                            Repeater {
+                                model: featureCard.visits
+                                delegate: LocationButton {
+                                    required property int modelData
+                                    readonly property string visitLabel: qsTranslate("AmazonLocationService", "Visit %1 · %2").arg(modelData).arg(plugin.stopRole(modelData - 1))
+                                    text: visitLabel + "  ×"
+                                    Accessible.name: qsTranslate("AmazonLocationService", "Remove visit %1 to %2").arg(modelData).arg(addVisit.text)
+                                    height: Math.max(implicitHeight, plugin.touchHeight)
+                                    destructive: true
+                                    enabled: !plugin.pending
+                                    onClicked: plugin.removeStop(modelData - 1)
+                                }
                             }
                         }
                     }
-                    onClicked: plugin.addStop(QfGeometryUtils.centroid(model.geometry), model.crs, text, featureKey)
                 }
                 ScrollBar.vertical: ScrollBar {}
             }

@@ -85,11 +85,11 @@ After adding at least two stops, tap **Find route** at the bottom of the map to 
 
 **To add stops from a layer**, open **Add from layer** in Route Search, choose a layer under **Layer for feature selection**, and tap **Select layer features**. In **Filter by name or ID**, type part of the display name or a feature ID (for example, `42` or `FID 42`). Names match regardless of case. Tap **Clear** to show the whole layer again.
 
-Tap a feature card to add it. A checkmark and visit number show its position in the route. You can change the filter to find your next stop and keep the visits already added. Tap the same card again to add a return visit. The card then lists both visit numbers. Tap **Done** to return to the route.
+Tap a feature card to add it. A checkmark and visit number show its position in the route. You can change the filter to find your next stop and keep the visits already added. Tap the same card again to add a return visit. Each visit has its own button below the feature name. To undo a selection, tap the visit you want to remove (for example, **Visit 1 · Origin ×**). This also works when the route is full. Tap **Done** to return to the route.
 
 The feature names in the image below are sample data.
 
-<img src="img/layer-feature-selection.png" alt="Select Features with checkmarks and visit numbers on the two features added to the route" width="360">
+<img src="img/layer-feature-selection.png" alt="Equipment depot has separate remove buttons for visits 1 and 3. Survey office has one for visit 2." width="360">
 
 ### Review the visit order and find a route
 

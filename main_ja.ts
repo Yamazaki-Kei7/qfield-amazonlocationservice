@@ -40,6 +40,10 @@
         <translation>この地点の座標を取得できませんでした。</translation>
     </message>
     <message>
+        <source>Removed %1 from the route.</source>
+        <translation>%1を経路から外しました。</translation>
+    </message>
+    <message>
         <source>Added %1 to the route.</source>
         <translation>「%1」を経路に追加しました。</translation>
     </message>
@@ -348,12 +352,12 @@
         <translation>経路の地点：%1 / %2か所</translation>
     </message>
     <message>
-        <source>Stop limit reached (%1).</source>
-        <translation>地点数の上限（%1か所）に達しました。</translation>
+        <source>Stop limit reached (%1). Tap × on a visit to remove it.</source>
+        <translation>地点数の上限（%1か所）に達しました。訪問番号の「×」で経路から外せます。</translation>
     </message>
     <message>
-        <source>Tap a feature to add a stop. Tap again to revisit.</source>
-        <translation>地物をタップすると経路に追加されます。同じ地物をもう一度タップすると再訪できます。</translation>
+        <source>Tap a feature to add or revisit it. Tap × on a visit to remove it.</source>
+        <translation>地物をタップして追加します。もう一度タップすると再訪できます。訪問番号の「×」でその回だけ外せます。</translation>
     </message>
     <message>
         <source>Filter by name or ID</source>
@@ -376,8 +380,8 @@
         <translation>このレイヤーには地物がありません。</translation>
     </message>
     <message>
-        <source>Visits %1</source>
-        <translation>訪問順：%1</translation>
+        <source>Remove visit %1 to %2</source>
+        <translation>%2への%1番目の訪問を経路から外す</translation>
     </message>
     <message>
         <source>Visit %1 · %2</source>

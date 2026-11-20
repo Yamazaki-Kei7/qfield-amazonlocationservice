@@ -52,6 +52,7 @@ Item {
     readonly property string apiKey: keyField.text.trim()
     readonly property int maxStops: Routes.stopLimit(travelMode.id)
     readonly property bool atLimit: stops.length >= maxStops
+    readonly property string limitText: qsTranslate("AmazonLocationService", "%1 supports up to %2 stops.").arg(travelMode.label).arg(maxStops)
     readonly property bool canAddStop: !atLimit && !pending
     readonly property bool reorderable: stops.length > 1
     readonly property bool optimizable: Routes.supportsWaypoints(travelMode.id)
@@ -84,10 +85,13 @@ Item {
 
     function pickPoint(screenPoint, device, interaction) {
         if (!picking || interaction !== "clicked") return false
-        if (pending) return true
+        addMapPoint(screenPoint)
+        return true
+    }
+
+    function addMapPoint(screenPoint) {
         const mapPoint = canvas.mapSettings.screenToCoordinate(screenPoint)
         addStop(mapPoint, canvas.mapSettings.destinationCrs, qsTranslate("AmazonLocationService", "Map point"))
-        return true
     }
 
     function toWgs84(point, crs) {
@@ -107,7 +111,7 @@ Item {
     function addPosition(position, label, asDestination = false, featureKey = "") {
         if (pending) return
         if (atLimit) {
-            window.displayToast(qsTranslate("AmazonLocationService", "%1 supports up to %2 stops.").arg(travelMode.label).arg(maxStops))
+            window.displayToast(limitText)
             return
         }
         // QML list delegates can supply a QVariantList instead of a JavaScript array.
@@ -401,17 +405,18 @@ Item {
                 Text { anchors.centerIn: parent; text: isPlace ? "●" : index + 1; color: "white" }
             }
         }
+        Image {
+            id: aim
+            anchors.centerIn: parent
+            visible: plugin.picking && plugin.canAddStop
+            source: Qt.resolvedUrl("icons/Crosshair.svg")
+            Accessible.ignored: true
+        }
     }
 
-    Pane {
-        parent: plugin.canvas.parent
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: plugin.overlayBottomMargin
-        width: Math.min(410, parent.width - 2 * plugin.gutter)
+    MapCard {
         visible: !!plugin.preview
         padding: 12
-        background: Rectangle { radius: 8; color: QfTheme.groupBoxSurfaceColor; border.color: QfTheme.controlBorderColor }
         contentItem: ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true
@@ -469,26 +474,80 @@ Item {
 
     QfMultiFeatureListModel { id: matches }
 
-    LocationButton {
+    MapCard {
+        id: guide
+        // On narrow maps, keep the guide above QField's bottom corner controls.
+        anchors.bottomMargin: plugin.overlayBottomMargin + (parent.width - width < 2 * (plugin.touchHeight + plugin.gutter) ? plugin.touchHeight : 0)
+        visible: plugin.picking
+        padding: 8
+        contentItem: ColumnLayout {
+            spacing: 0
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 4
+                    wrapMode: Text.Wrap
+                    color: QfTheme.mainTextColor
+                    text: plugin.pending ? qsTranslate("AmazonLocationService", "Finding route…")
+                        : plugin.atLimit ? plugin.limitText
+                        : !plugin.stops.length || plugin.needsOrigin ? qsTranslate("AmazonLocationService", "Tap the origin on the map, or move the map to align it with the crosshair.")
+                        : qsTranslate("AmazonLocationService", "Tap the next destination, or move the map to align it with the crosshair.")
+                }
+                LocationButton {
+                    text: qsTranslate("AmazonLocationService", "Back")
+                    Layout.minimumHeight: plugin.touchHeight
+                    enabled: !plugin.pending
+                    onClicked: {
+                        plugin.picking = false
+                        panel.open()
+                    }
+                }
+            }
+            GridLayout {
+                Layout.fillWidth: true
+                columns: centerButton.implicitWidth + columnSpacing + mapRouteButton.implicitWidth <= width ? 2 : 1
+                rowSpacing: 0
+                LocationButton {
+                    id: centerButton
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: plugin.touchHeight
+                    enabled: plugin.canAddStop
+                    primary: !mapRouteButton.visible
+                    text: qsTranslate("AmazonLocationService", "Add at center")
+                    icon.source: Qt.resolvedUrl("icons/MapPin.svg")
+                    onClicked: plugin.addMapPoint(aim.mapToItem(plugin.canvas, aim.width / 2, aim.height / 2))
+                }
+                LocationButton {
+                    id: mapRouteButton
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: plugin.touchHeight
+                    visible: plugin.stops.length >= 2
+                    enabled: !plugin.pending
+                    text: plugin.pending ? qsTranslate("AmazonLocationService", "Finding route…") : plugin.searchHint ? qsTranslate("AmazonLocationService", "Enter settings") : qsTranslate("AmazonLocationService", "Find route")
+                    Accessible.description: plugin.statusText
+                    primary: true
+                    onClicked: {
+                        if (plugin.searchHint) {
+                            plugin.picking = false
+                            panel.open()
+                            settingsPopup.open()
+                        } else {
+                            plugin.search()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    component MapCard: Pane {
         parent: plugin.canvas.parent
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: plugin.overlayBottomMargin
-        height: Math.max(implicitHeight, plugin.touchHeight)
-        visible: plugin.picking && plugin.stops.length >= 2
-        enabled: !plugin.pending
-        text: plugin.pending ? qsTranslate("AmazonLocationService", "Finding route…") : plugin.searchHint ? qsTranslate("AmazonLocationService", "Enter settings") : qsTranslate("AmazonLocationService", "Find route")
-        Accessible.description: plugin.statusText
-        primary: true
-        onClicked: {
-            if (plugin.searchHint) {
-                plugin.picking = false
-                panel.open()
-                settingsPopup.open()
-            } else {
-                plugin.search()
-            }
-        }
+        width: Math.min(410, parent.width - 2 * plugin.gutter)
+        background: Rectangle { radius: 8; color: QfTheme.groupBoxSurfaceColor; border.color: QfTheme.controlBorderColor }
     }
 
     component RoutePopup: Popup {
@@ -798,7 +857,6 @@ Item {
                         onClicked: {
                             panel.close()
                             plugin.picking = true
-                            plugin.window.displayToast(qsTranslate("AmazonLocationService", "Tap the map in visit order. Find a route after adding at least two stops."))
                         }
                     }
                     LocationButton {

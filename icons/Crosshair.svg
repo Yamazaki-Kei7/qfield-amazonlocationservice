@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="36" height="36" viewBox="0 0 36 36" fill="none" stroke-linecap="round">
+  <defs>
+    <path id="sight" d="M12 7a12.5 12.5 0 0 0-5 5m17-5a12.5 12.5 0 0 1 5 5M7 24a12.5 12.5 0 0 0 5 5m12 0a12.5 12.5 0 0 0 5-5M18 3v6m0 18v6M3 18h6m18 0h6"/>
+  </defs>
+  <use xlink:href="#sight" stroke="#232f3e" stroke-width="4.5"/>
+  <use xlink:href="#sight" stroke="#ff9900" stroke-width="2"/>
+  <circle cx="18" cy="18" r="1.8" fill="#ff9900" stroke="#232f3e" stroke-width="1"/>
+</svg>

@@ -179,19 +179,19 @@ function routeSummary(route) {
         const details = leg[leg.Type + "LegDetails"]
         return details && details.Summary && details.Summary.Overview
     })
+    const valid = value => Number.isFinite(value) && value >= 0
     function total(field) {
         const value = route.Summary && route.Summary[field]
-        if (Number.isFinite(value) && value >= 0) return value
-        if (!overviews.length || !overviews.every(leg => leg && Number.isFinite(leg[field]) && leg[field] >= 0))
-            return null
-        return overviews.reduce((sum, leg) => sum + leg[field], 0)
+        if (valid(value)) return value
+        const values = overviews.map(overview => overview && overview[field])
+        return values.length && values.every(valid) ? values.reduce((sum, value) => sum + value, 0) : null
     }
     const distance = total("Distance")
     const duration = total("Duration")
     const time = duration === null ? "" : qsTranslate("AmazonLocationService", "About %1").arg(formatDuration(duration))
-    if (distance === null) return time || qsTranslate("AmazonLocationService", "Distance and travel time unavailable")
-    return time ? qsTranslate("AmazonLocationService", "%1 · %2").arg(time).arg(formatDistance(distance))
-                : formatDistance(distance)
+    const length = distance === null ? "" : formatDistance(distance)
+    if (time && length) return qsTranslate("AmazonLocationService", "%1 · %2").arg(time).arg(length)
+    return time || length || qsTranslate("AmazonLocationService", "Distance and travel time unavailable")
 }
 
 function placeResults(response) {

@@ -445,14 +445,8 @@ Item {
                     font: QfTheme.strongResultFont
                     wrapMode: Text.Wrap
                 }
-                LocationButton {
-                    text: "×"
-                    horizontalPadding: 0
-                    leftPadding: horizontalPadding
-                    rightPadding: horizontalPadding
+                CloseButton {
                     Accessible.name: qsTranslate("AmazonLocationService", "Close place details")
-                    Layout.minimumWidth: plugin.touchHeight
-                    Layout.minimumHeight: plugin.touchHeight
                     onClicked: plugin.preview = null
                 }
             }
@@ -497,7 +491,7 @@ Item {
         visible: !!plugin.routeSummary && !plugin.summaryDismissed && !plugin.picking && !plugin.preview
                  && !panel.visible && !places.visible
         width: Math.min(implicitWidth, parent.width - 2 * plugin.gutter)
-        anchors.bottomMargin: plugin.overlayBottomMargin + (parent.width - width < 2 * (plugin.touchHeight + plugin.gutter) ? plugin.touchHeight : 0)
+        clearsCornerControls: true
         padding: 8
         contentItem: RowLayout {
             ColumnLayout {
@@ -519,12 +513,8 @@ Item {
                     wrapMode: Text.Wrap
                 }
             }
-            LocationButton {
-                text: "×"
+            CloseButton {
                 Accessible.name: qsTranslate("AmazonLocationService", "Close route summary")
-                Layout.minimumWidth: plugin.touchHeight
-                Layout.minimumHeight: plugin.touchHeight
-                horizontalPadding: 0
                 onClicked: plugin.summaryDismissed = true
             }
         }
@@ -532,8 +522,7 @@ Item {
 
     MapCard {
         id: guide
-        // On narrow maps, keep the guide above QField's bottom corner controls.
-        anchors.bottomMargin: plugin.overlayBottomMargin + (parent.width - width < 2 * (plugin.touchHeight + plugin.gutter) ? plugin.touchHeight : 0)
+        clearsCornerControls: true
         visible: plugin.picking
         padding: 8
         contentItem: ColumnLayout {
@@ -598,12 +587,23 @@ Item {
     }
 
     component MapCard: Pane {
+        // On narrow maps, keep the card above QField's bottom corner controls.
+        property bool clearsCornerControls: false
         parent: plugin.canvas.parent
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: plugin.overlayBottomMargin
+        anchors.bottomMargin: plugin.overlayBottomMargin + (clearsCornerControls && parent.width - width < 2 * (plugin.touchHeight + plugin.gutter) ? plugin.touchHeight : 0)
         width: Math.min(410, parent.width - 2 * plugin.gutter)
         background: Rectangle { radius: 8; color: QfTheme.groupBoxSurfaceColor; border.color: QfTheme.controlBorderColor }
+    }
+
+    component CloseButton: LocationButton {
+        text: "×"
+        horizontalPadding: 0
+        leftPadding: horizontalPadding
+        rightPadding: horizontalPadding
+        Layout.minimumWidth: plugin.touchHeight
+        Layout.minimumHeight: plugin.touchHeight
     }
 
     component RoutePopup: Popup {

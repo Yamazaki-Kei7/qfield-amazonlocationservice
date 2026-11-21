@@ -35,6 +35,8 @@ Item {
     // The order replaced by the last optimization, for as long as it can be restored.
     property var undoStops: null
     property string optimizeNote: ""
+    property string routeSummary: ""
+    property bool summaryDismissed: false
     readonly property var pending: routeRequest.pending || optimizeRequest.pending
     readonly property bool optimizing: !!optimizeRequest.pending
     property bool picking: false
@@ -199,6 +201,7 @@ Item {
         routeRequest.cancel()
         optimizeRequest.cancel()
         route.geometryWrapper.clear()
+        routeSummary = ""
         message = ""
         optimizeNote = ""
     }
@@ -225,9 +228,12 @@ Item {
         const cos = Math.abs(Math.cos(angle))
         const sin = Math.abs(Math.sin(angle))
         const inset = stopMarkerSize / 2 + gutter
+        // Fit the numbered stops in the part of the map above the result card.
+        const cardTop = resultCard.mapToItem(canvas, 0, 0).y
+        const covered = Math.max(0, Math.min(canvas.height - 2 * inset - 1, canvas.height - cardTop))
         const unitsPerPoint = Math.max(
             (bounds.width * cos + bounds.height * sin) / Math.max(1, canvas.width - 2 * inset),
-            (bounds.width * sin + bounds.height * cos) / Math.max(1, canvas.height - 2 * inset))
+            (bounds.width * sin + bounds.height * cos) / Math.max(1, canvas.height - covered - 2 * inset))
         const center = bounds.center
         if (!unitsPerPoint) {
             settings.setCenter(QfGeometryUtils.point(center.x, center.y))
@@ -235,9 +241,12 @@ Item {
         }
         const halfWidth = unitsPerPoint * canvas.width / 2
         const halfHeight = unitsPerPoint * canvas.height / 2
+        const shift = covered * unitsPerPoint / 2
+        const x = center.x + Math.sin(angle) * shift
+        const y = center.y - Math.cos(angle) * shift
         iface.setMapExtent(QfGeometryUtils.createRectangleFromPoints(
-            QfGeometryUtils.point(center.x - halfWidth, center.y - halfHeight),
-            QfGeometryUtils.point(center.x + halfWidth, center.y + halfHeight)))
+            QfGeometryUtils.point(x - halfWidth, y - halfHeight),
+            QfGeometryUtils.point(x + halfWidth, y + halfHeight)))
     }
 
     function search() {
@@ -250,10 +259,11 @@ Item {
                 const geometry = QfGeometryUtils.createGeometryFromWkt(Routes.routeWkt(data, body))
                 route.geometryWrapper.crs = wgs84
                 route.geometryWrapper.qgsGeometry = geometry
-                fitRouteOnMap(geometry)
+                routeSummary = Routes.routeSummary(data.Routes[0])
+                summaryDismissed = false
                 picking = false
                 panel.close()
-                window.displayToast(qsTranslate("AmazonLocationService", "%1 route with %2 stops displayed.").arg(travelMode.label).arg(stops.length))
+                fitRouteOnMap(geometry)
             } catch (error) {
                 message = error instanceof SyntaxError ? qsTranslate("AmazonLocationService", "Could not read the route response.") : error.message
             }
@@ -435,14 +445,8 @@ Item {
                     font: QfTheme.strongResultFont
                     wrapMode: Text.Wrap
                 }
-                LocationButton {
-                    text: "×"
-                    horizontalPadding: 0
-                    leftPadding: horizontalPadding
-                    rightPadding: horizontalPadding
+                CloseButton {
                     Accessible.name: qsTranslate("AmazonLocationService", "Close place details")
-                    Layout.minimumWidth: plugin.touchHeight
-                    Layout.minimumHeight: plugin.touchHeight
                     onClicked: plugin.preview = null
                 }
             }
@@ -483,9 +487,42 @@ Item {
     QfMultiFeatureListModel { id: matches }
 
     MapCard {
+        id: resultCard
+        visible: !!plugin.routeSummary && !plugin.summaryDismissed && !plugin.picking && !plugin.preview
+                 && !panel.visible && !places.visible
+        width: Math.min(implicitWidth, parent.width - 2 * plugin.gutter)
+        clearsCornerControls: true
+        padding: 8
+        contentItem: RowLayout {
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 4
+                spacing: 2
+                Label {
+                    Layout.fillWidth: true
+                    text: qsTranslate("AmazonLocationService", "%1 · %2 stops").arg(plugin.travelMode.label).arg(plugin.stops.length)
+                    font: QfTheme.tipFont
+                    color: QfTheme.secondaryTextColor
+                    wrapMode: Text.Wrap
+                }
+                Label {
+                    Layout.fillWidth: true
+                    text: plugin.routeSummary
+                    font: QfTheme.strongResultFont
+                    color: QfTheme.mainTextColor
+                    wrapMode: Text.Wrap
+                }
+            }
+            CloseButton {
+                Accessible.name: qsTranslate("AmazonLocationService", "Close route summary")
+                onClicked: plugin.summaryDismissed = true
+            }
+        }
+    }
+
+    MapCard {
         id: guide
-        // On narrow maps, keep the guide above QField's bottom corner controls.
-        anchors.bottomMargin: plugin.overlayBottomMargin + (parent.width - width < 2 * (plugin.touchHeight + plugin.gutter) ? plugin.touchHeight : 0)
+        clearsCornerControls: true
         visible: plugin.picking
         padding: 8
         contentItem: ColumnLayout {
@@ -550,12 +587,23 @@ Item {
     }
 
     component MapCard: Pane {
+        // On narrow maps, keep the card above QField's bottom corner controls.
+        property bool clearsCornerControls: false
         parent: plugin.canvas.parent
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: plugin.overlayBottomMargin
+        anchors.bottomMargin: plugin.overlayBottomMargin + (clearsCornerControls && parent.width - width < 2 * (plugin.touchHeight + plugin.gutter) ? plugin.touchHeight : 0)
         width: Math.min(410, parent.width - 2 * plugin.gutter)
         background: Rectangle { radius: 8; color: QfTheme.groupBoxSurfaceColor; border.color: QfTheme.controlBorderColor }
+    }
+
+    component CloseButton: LocationButton {
+        text: "×"
+        horizontalPadding: 0
+        leftPadding: horizontalPadding
+        rightPadding: horizontalPadding
+        Layout.minimumWidth: plugin.touchHeight
+        Layout.minimumHeight: plugin.touchHeight
     }
 
     component RoutePopup: Popup {
@@ -1030,7 +1078,7 @@ Item {
                     Layout.fillWidth: true
                     visible: text.length > 0
                     wrapMode: Text.Wrap
-                    text: plugin.statusText
+                    text: plugin.statusText || (plugin.pending ? "" : plugin.routeSummary)
                     textFormat: Text.PlainText
                     color: plugin.message ? plugin.colors.danger.foreground : QfTheme.mainTextColor
                 }

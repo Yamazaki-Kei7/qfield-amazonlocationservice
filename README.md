@@ -114,6 +114,8 @@ With Car, Walking, Scooter, or Truck and at least three stops, **Optimize order*
 
 Once the search completes, the map displays the entire route. In the example below, the blue line follows roads in the order **1 → 2 → 3**. The route and numbered stops appear as temporary overlays on your project map.
 
+A card at the bottom of the map shows the estimated travel time and total distance for the displayed route. Tap **×** to close the card. You can check the figures again in **Route Search**.
+
 <img src="img/driving-route-result.png" alt="Map with a blue driving route from origin 1 through waypoint 2 to destination 3" width="360">
 
 ### Useful details

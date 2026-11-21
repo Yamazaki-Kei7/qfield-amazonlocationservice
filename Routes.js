@@ -46,6 +46,7 @@ function requestBody(stops, mode, preference) {
         Origin: stops[0].position,
         Destination: stops[stops.length - 1].position,
         TravelMode: mode,
+        LegAdditionalFeatures: ["Summary"],
         LegGeometryFormat: "Simple"
     }
     const criterion = routeCriterion(mode, preference)
@@ -153,18 +154,44 @@ function boundsPerimeterKm(positions) {
     return 2 * (width + north - south) * 6371.0088 * Math.PI / 180
 }
 
+function formatDistance(distance) {
+    return distance < 1000 ? qsTranslate("AmazonLocationService", "%1 m").arg(Math.round(distance))
+                           : qsTranslate("AmazonLocationService", "%1 km").arg((distance / 1000).toFixed(1))
+}
+
+function formatDuration(duration) {
+    const minutes = duration === 0 ? 0 : Math.max(1, Math.round(duration / 60))
+    const hours = Math.floor(minutes / 60)
+    const remainder = minutes % 60
+    if (!hours) return qsTranslate("AmazonLocationService", "%1 min").arg(minutes)
+    if (!remainder) return qsTranslate("AmazonLocationService", "%1 hr").arg(hours)
+    return qsTranslate("AmazonLocationService", "%1 hr %2 min").arg(hours).arg(remainder)
+}
+
 function tripSummary(distance, duration) {
     if (!Number.isFinite(distance) || !Number.isFinite(duration)) return ""
-    const minutes = Math.max(1, Math.round(duration / 60))
-    const hours = Math.floor(minutes / 60)
-    const length = distance < 1000 ? qsTranslate("AmazonLocationService", "%1 m").arg(Math.round(distance))
-                                   : qsTranslate("AmazonLocationService", "%1 km").arg((distance / 1000).toFixed(1))
-    const remainder = minutes % 60
-    let time
-    if (!hours) time = qsTranslate("AmazonLocationService", "%1 min").arg(minutes)
-    else if (!remainder) time = qsTranslate("AmazonLocationService", "%1 hr").arg(hours)
-    else time = qsTranslate("AmazonLocationService", "%1 hr %2 min").arg(hours).arg(remainder)
-    return qsTranslate("AmazonLocationService", " (about %1, %2)").arg(length).arg(time)
+    return qsTranslate("AmazonLocationService", " (about %1, %2)").arg(formatDistance(distance)).arg(formatDuration(duration))
+}
+
+function routeSummary(route) {
+    // A route total takes precedence. Otherwise every leg must contribute to the total.
+    const overviews = route.Legs.map(leg => {
+        const details = leg[leg.Type + "LegDetails"]
+        return details && details.Summary && details.Summary.Overview
+    })
+    const valid = value => Number.isFinite(value) && value >= 0
+    function total(field) {
+        const value = route.Summary && route.Summary[field]
+        if (valid(value)) return value
+        const values = overviews.map(overview => overview && overview[field])
+        return values.length && values.every(valid) ? values.reduce((sum, value) => sum + value, 0) : null
+    }
+    const distance = total("Distance")
+    const duration = total("Duration")
+    const time = duration === null ? "" : qsTranslate("AmazonLocationService", "About %1").arg(formatDuration(duration))
+    const length = distance === null ? "" : formatDistance(distance)
+    if (time && length) return qsTranslate("AmazonLocationService", "%1 · %2").arg(time).arg(length)
+    return time || length || qsTranslate("AmazonLocationService", "Distance and travel time unavailable")
 }
 
 function placeResults(response) {

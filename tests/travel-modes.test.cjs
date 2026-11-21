@@ -47,6 +47,31 @@ test("route validation failures display the service message when available", () 
     }
 })
 
+test("all travel modes request summaries with the route geometry", () => {
+    for (const mode of routes.travelModes) {
+        const body = routes.requestBody(stops.slice(0, 2), mode.id)
+        assert.deepEqual(Array.from(body.LegAdditionalFeatures), ["Summary"])
+        assert.equal(body.LegGeometryFormat, "Simple")
+    }
+})
+
+test("route results prefer route-wide totals and sum whole legs before rounding", () => {
+    const Legs = ["Pedestrian", "Transit", "Ferry"].map(Type => ({
+        Type, [Type + "LegDetails"]: { Summary: { Overview: { Distance: 450, Duration: 30 }, TravelOnly: { Duration: 10 } } }
+    }))
+    assert.equal(routes.routeSummary({ Legs }), "About 2 min · 1.4 km")
+    assert.equal(routes.routeSummary({ Legs, Summary: { Duration: 5400, Distance: 12390 } }), "About 1 hr 30 min · 12.4 km")
+    assert.equal(routes.routeSummary({ Legs, Summary: { Duration: 3600 } }), "About 1 hr · 1.4 km")
+})
+
+test("route results show only complete totals, including genuine zeros", () => {
+    const Legs = [{ Type: "Vehicle", VehicleLegDetails: { Summary: { Overview: { Distance: 400, Duration: 20 } } } }, { Type: "Taxi" }]
+    assert.equal(routes.routeSummary({ Legs }), "Distance and travel time unavailable")
+    assert.equal(routes.routeSummary({ Legs, Summary: { Distance: 520, Duration: -1 } }), "520 m")
+    assert.equal(routes.routeSummary({ Legs, Summary: { Distance: null, Duration: 20 } }), "About 1 min")
+    assert.equal(routes.routeSummary({ Legs, Summary: { Distance: 0, Duration: 0 } }), "About 0 min · 0 m")
+})
+
 test("route and search failures give English guidance", () => {
     assert.throws(() => routes.requestBody([], "Car"), /valid stops.*travel mode/)
     assert.throws(() => routes.routeWkt({}, {}), /No route.*all legs/)

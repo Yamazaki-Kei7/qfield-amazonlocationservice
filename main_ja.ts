@@ -64,8 +64,24 @@
         <translation>経由地</translation>
     </message>
     <message>
-        <source>%1 route with %2 stops displayed.</source>
-        <translation>%2か所を結ぶ%1の経路を表示しました。</translation>
+        <source>%1 · %2 stops</source>
+        <translation>%1・%2地点</translation>
+    </message>
+    <message>
+        <source>Close route summary</source>
+        <translation>経路の概要を閉じる</translation>
+    </message>
+    <message>
+        <source>About %1</source>
+        <translation>約%1</translation>
+    </message>
+    <message>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <source>Distance and travel time unavailable</source>
+        <translation>距離と所要時間を取得できませんでした</translation>
     </message>
     <message>
         <source>Could not read the route response.</source>

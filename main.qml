@@ -42,6 +42,7 @@ Item {
     readonly property bool optimizing: !!optimizeRequest.pending
     property string pickMode: ""
     readonly property bool picking: pickMode !== ""
+    readonly property bool pickingPoint: pickMode === "point"
     readonly property bool pickingFeatures: pickMode === "features"
     property var featureLayer: null
     readonly property bool featureLayerVisible: !!featureLayer && canvas.mapSettings.layers.includes(featureLayer)
@@ -135,9 +136,16 @@ Item {
         }
     }
 
+    function featureKey(feature) {
+        return feature.currentLayer ? feature.currentLayer.id + ":" + feature.featureId : ""
+    }
+
+    function featureLabel(feature) {
+        return feature.featureName || ("FID " + feature.featureId)
+    }
+
     function addFeature(feature) {
-        addStop(QfGeometryUtils.centroid(feature.geometry), feature.crs,
-                feature.featureName || ("FID " + feature.featureId), feature.currentLayer.id + ":" + feature.featureId)
+        addStop(QfGeometryUtils.centroid(feature.geometry), feature.crs, featureLabel(feature), featureKey(feature))
     }
 
     function toWgs84(point, crs) {
@@ -186,6 +194,11 @@ Item {
     function showPlace(place) {
         preview = place
         canvas.mapSettings.setCenter(toMapCrs(place.position), true)
+    }
+
+    function backToPanel() {
+        pickMode = ""
+        panel.open()
     }
 
     function openPlaces(forRoute) {
@@ -494,7 +507,7 @@ Item {
         Image {
             id: aim
             anchors.centerIn: parent
-            visible: plugin.pickMode === "point" && plugin.canAddStop
+            visible: plugin.pickingPoint && plugin.canAddStop
             source: Qt.resolvedUrl("icons/Crosshair.svg")
             Accessible.ignored: true
         }
@@ -563,7 +576,7 @@ Item {
         delegate: ItemDelegate {
             width: ListView.view.width
             implicitHeight: Math.max(plugin.touchHeight, implicitContentHeight + topPadding + bottomPadding)
-            enabled: plugin.canAddStop && plugin.featureLayerVisible
+            enabled: plugin.canAddStop
             text: model.featureName ? model.featureName + " · FID " + model.featureId : "FID " + model.featureId
             contentItem: Label {
                 text: parent.text
@@ -614,8 +627,7 @@ Item {
                     Layout.minimumHeight: plugin.touchHeight
                     text: qsTranslate("AmazonLocationService", "Back to list")
                     onClicked: {
-                        plugin.pickMode = ""
-                        panel.open()
+                        plugin.backToPanel()
                         features.open()
                     }
                 }
@@ -624,10 +636,7 @@ Item {
                     Layout.minimumHeight: plugin.touchHeight
                     primary: true
                     text: qsTranslate("AmazonLocationService", "Done")
-                    onClicked: {
-                        plugin.pickMode = ""
-                        panel.open()
-                    }
+                    onClicked: plugin.backToPanel()
                 }
             }
         }
@@ -670,7 +679,7 @@ Item {
     MapCard {
         id: guide
         clearsCornerControls: true
-        visible: plugin.pickMode === "point"
+        visible: plugin.pickingPoint
         padding: 8
         contentItem: ColumnLayout {
             spacing: 0
@@ -690,10 +699,7 @@ Item {
                     text: qsTranslate("AmazonLocationService", "Back")
                     Layout.minimumHeight: plugin.touchHeight
                     enabled: !plugin.pending
-                    onClicked: {
-                        plugin.pickMode = ""
-                        panel.open()
-                    }
+                    onClicked: plugin.backToPanel()
                 }
             }
             GridLayout {
@@ -721,8 +727,7 @@ Item {
                     primary: true
                     onClicked: {
                         if (plugin.searchHint) {
-                            plugin.pickMode = ""
-                            panel.open()
+                            plugin.backToPanel()
                             settingsPopup.open()
                         } else {
                             plugin.search()
@@ -1468,7 +1473,7 @@ Item {
                 model: matches
                 delegate: Rectangle {
                     id: featureCard
-                    readonly property string featureKey: model.currentLayer ? model.currentLayer.id + ":" + model.featureId : ""
+                    readonly property string featureKey: plugin.featureKey(model)
                     readonly property var visits: features.visitsByFeature[featureKey] || []
                     readonly property bool added: visits.length > 0
                     width: ListView.view.width
@@ -1488,7 +1493,7 @@ Item {
                             implicitHeight: Math.max(plugin.touchHeight, implicitContentHeight + topPadding + bottomPadding)
                             enabled: plugin.canAddStop
                             opacity: !enabled && !featureCard.added ? 0.6 : 1
-                            text: model.featureName || ("FID " + model.featureId)
+                            text: plugin.featureLabel(model)
                             Accessible.description: featureCard.added ? qsTranslate("AmazonLocationService", "Add another visit") : qsTranslate("AmazonLocationService", "Add to route")
                             background: null
                             contentItem: RowLayout {

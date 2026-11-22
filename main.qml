@@ -345,11 +345,10 @@ Item {
 
     Item {
         id: searchGroup
-        readonly property int inset: 4
+        readonly property real collapsedHeight: serviceButton.height + 2 * buttonColumn.padding
         property real expansion: serviceButton.checked ? 1 : 0
-        implicitWidth: serviceButton.width + 2 * inset
-        implicitHeight: serviceButton.height + 2 * inset
-            + expansion * (placeButton.height + routeButton.height + 2 * buttonColumn.spacing)
+        implicitWidth: buttonColumn.implicitWidth
+        implicitHeight: collapsedHeight + expansion * (buttonColumn.implicitHeight - collapsedHeight)
         clip: true
 
         Behavior on expansion {
@@ -365,9 +364,8 @@ Item {
 
         Column {
             id: buttonColumn
-            x: searchGroup.inset
-            y: searchGroup.inset
-            spacing: searchGroup.inset
+            padding: 4
+            spacing: padding
             QfToolButton {
                 id: serviceButton
                 readonly property int iconSize: Math.round(width * 0.7)
@@ -392,7 +390,6 @@ Item {
             }
 
             SearchToolButton {
-                id: placeButton
                 text: qsTranslate("AmazonLocationService", "Place Search")
                 iconSource: Qt.resolvedUrl("poi-search.svg")
                 enabled: serviceButton.checked && !plugin.pending
@@ -400,7 +397,6 @@ Item {
             }
 
             SearchToolButton {
-                id: routeButton
                 enabled: serviceButton.checked
                 text: qsTranslate("AmazonLocationService", "Route Search")
                 iconSource: Qt.resolvedUrl("icon.svg")

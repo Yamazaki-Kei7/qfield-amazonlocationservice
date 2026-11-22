@@ -99,7 +99,7 @@ While you add stops from the map, the service button shows the stop count. Tap *
 
 <img src="img/visit-order-editor.png" alt="Three scooter stops in visit order, with Shortest selected for the order and Fastest for the route" width="360">
 
-To change the order, drag the number at the left of a stop card up or down, or use the **↑** and **↓** buttons at the right to move it one position. **Remove last** removes the last stop. **Clear all** removes all stops and the displayed route.
+To change the order, drag the number at the left of a stop card up or down, or use the **↑** and **↓** buttons to move it one position. Tap **×** on a card to remove that visit. To remove all stops and the displayed route, tap **Clear all** below the list.
 
 When the order is ready, tap the **Find route** button at the bottom. Your stops and their order are retained if you change the travel mode and search again.
 

@@ -937,6 +937,16 @@ Item {
             }
             MoveButton { stopIndex: card.index; step: -1 }
             MoveButton { stopIndex: card.index; step: 1 }
+            CloseButton {
+                destructive: true
+                enabled: !plugin.pending
+                Layout.preferredWidth: plugin.touchHeight
+                Accessible.name: qsTranslate("AmazonLocationService", "Remove visit %1 to %2").arg(card.index + 1).arg(card.stop ? card.stop.label : "")
+                ToolTip.visible: hovered || pressed
+                ToolTip.text: Accessible.name
+                ToolTip.delay: 600
+                onClicked: plugin.removeStop(card.index)
+            }
         }
     }
 
@@ -1210,11 +1220,13 @@ Item {
                         model: plugin.stops.length
                         delegate: StopCard {}
                     }
-                    RowLayout {
+                    LocationButton {
                         visible: plugin.stops.length > 0
                         enabled: !plugin.pending
-                        LocationButton { text: qsTranslate("AmazonLocationService", "Remove last"); destructive: true; onClicked: plugin.removeStop(plugin.stops.length - 1) }
-                        LocationButton { text: qsTranslate("AmazonLocationService", "Clear all"); destructive: true; onClicked: plugin.stops = [] }
+                        Layout.alignment: Qt.AlignLeft
+                        text: qsTranslate("AmazonLocationService", "Clear all")
+                        destructive: true
+                        onClicked: plugin.stops = []
                     }
                 }
             }

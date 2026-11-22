@@ -308,10 +308,6 @@
         <translation>番号を上下にドラッグして訪問順を変更できます。</translation>
     </message>
     <message>
-        <source>Remove last</source>
-        <translation>最後の地点を削除</translation>
-    </message>
-    <message>
         <source>Clear all</source>
         <translation>すべて削除</translation>
     </message>

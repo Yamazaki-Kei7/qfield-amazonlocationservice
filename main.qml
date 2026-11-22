@@ -76,9 +76,7 @@ Item {
     }
 
     Component.onCompleted: {
-        iface.addItemToPluginsToolbar(serviceButton)
-        iface.addItemToPluginsToolbar(placeButton)
-        iface.addItemToPluginsToolbar(routeButton)
+        iface.addItemToPluginsToolbar(searchGroup)
         handler.registerHandler(handlerName, pickPoint, QfMapCanvasPointHandler.Priority.High)
     }
     Component.onDestruction: {
@@ -86,7 +84,12 @@ Item {
     }
 
     function pickPoint(screenPoint, device, interaction) {
-        if (!picking || interaction !== "clicked") return false
+        if (interaction !== "clicked") return false
+        if (serviceButton.checked) {
+            serviceButton.checked = false
+            return true
+        }
+        if (!picking) return false
         addMapPoint(screenPoint)
         return true
     }
@@ -327,32 +330,9 @@ Item {
         }
     }
 
-    QfToolButton {
-        id: serviceButton
-        readonly property int iconSize: Math.round(width * 0.7)
-        round: true
-        checkable: true
-        bgcolor: Colors.serviceRed
-        padding: 0
-        iconSource: plugin.serviceIcon
-        iconColor: "transparent"
-        icon.width: serviceButton.iconSize
-        icon.height: serviceButton.iconSize
-        bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : (checked ? "▴" : "▾")
-        bottomRightIndicatorBgColor: Colors.orange
-        bottomRightIndicatorFgColor: Colors.ink
-        statusBadge.bottomMargin: 0
-        statusBadge.rightMargin: 0
-        Accessible.name: plugin.serviceName
-        Accessible.description: checked ? qsTranslate("AmazonLocationService", "Hide search buttons") : qsTranslate("AmazonLocationService", "Show search buttons")
-        ToolTip.text: plugin.serviceName
-        ToolTip.visible: hovered && !checked
-        ToolTip.delay: 600
-    }
-
     component SearchToolButton: QfToolButton {
         round: true
-        visible: serviceButton.checked
+        visible: searchGroup.expansion > 0
         display: AbstractButton.IconOnly
         bgcolor: Colors.blue
         opacity: enabled ? 1 : 0.4
@@ -363,22 +343,69 @@ Item {
         onClicked: serviceButton.checked = false
     }
 
-    SearchToolButton {
-        id: placeButton
-        text: qsTranslate("AmazonLocationService", "Place Search")
-        iconSource: Qt.resolvedUrl("poi-search.svg")
-        enabled: !plugin.pending
-        onClicked: plugin.openPlaces(false)
-    }
+    Item {
+        id: searchGroup
+        readonly property real collapsedHeight: serviceButton.height + 2 * buttonColumn.padding
+        property real expansion: serviceButton.checked ? 1 : 0
+        implicitWidth: buttonColumn.implicitWidth
+        implicitHeight: collapsedHeight + expansion * (buttonColumn.implicitHeight - collapsedHeight)
+        clip: true
 
-    SearchToolButton {
-        id: routeButton
-        text: qsTranslate("AmazonLocationService", "Route Search")
-        iconSource: Qt.resolvedUrl("icon.svg")
-        onClicked: {
-            plugin.picking = false
-            plugin.preview = null
-            panel.open()
+        Behavior on expansion {
+            NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: width / 2
+            color: Colors.ink
+            opacity: searchGroup.expansion
+        }
+
+        Column {
+            id: buttonColumn
+            padding: 4
+            spacing: padding
+            QfToolButton {
+                id: serviceButton
+                readonly property int iconSize: Math.round(width * 0.7)
+                round: true
+                checkable: true
+                bgcolor: Colors.serviceRed
+                padding: 0
+                iconSource: plugin.serviceIcon
+                iconColor: "transparent"
+                icon.width: serviceButton.iconSize
+                icon.height: serviceButton.iconSize
+                bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : ""
+                bottomRightIndicatorBgColor: Colors.orange
+                bottomRightIndicatorFgColor: Colors.ink
+                statusBadge.bottomMargin: 0
+                statusBadge.rightMargin: 0
+                Accessible.name: plugin.serviceName
+                Accessible.description: checked ? qsTranslate("AmazonLocationService", "Hide search buttons") : qsTranslate("AmazonLocationService", "Show search buttons")
+                ToolTip.text: plugin.serviceName
+                ToolTip.visible: hovered && !checked
+                ToolTip.delay: 600
+            }
+
+            SearchToolButton {
+                text: qsTranslate("AmazonLocationService", "Place Search")
+                iconSource: Qt.resolvedUrl("poi-search.svg")
+                enabled: serviceButton.checked && !plugin.pending
+                onClicked: plugin.openPlaces(false)
+            }
+
+            SearchToolButton {
+                enabled: serviceButton.checked
+                text: qsTranslate("AmazonLocationService", "Route Search")
+                iconSource: Qt.resolvedUrl("icon.svg")
+                onClicked: {
+                    plugin.picking = false
+                    plugin.preview = null
+                    panel.open()
+                }
+            }
         }
     }
 

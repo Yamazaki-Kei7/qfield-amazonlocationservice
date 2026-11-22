@@ -96,12 +96,7 @@ Item {
     }
 
     function pickPoint(screenPoint, device, interaction) {
-        if (interaction !== "clicked") return false
-        if (serviceButton.checked) {
-            serviceButton.checked = false
-            return true
-        }
-        if (!picking) return false
+        if (interaction !== "clicked" || !picking) return false
         if (pickingFeatures) identifyFeature(screenPoint)
         else addMapPoint(screenPoint)
         return true
@@ -373,7 +368,6 @@ Item {
         target: iface
         function onLoadProjectTriggered() {
             plugin.pickMode = ""
-            serviceButton.checked = false
             settingsPopup.close()
             places.close()
             plugin.preview = null
@@ -394,7 +388,6 @@ Item {
         ToolTip.text: text
         ToolTip.visible: hovered
         ToolTip.delay: serviceButton.ToolTip.delay
-        onClicked: serviceButton.checked = false
     }
 
     Item {

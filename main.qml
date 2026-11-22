@@ -774,7 +774,7 @@ Item {
         property string title
         property string dismissText: qsTranslate("AmazonLocationService", "Close")
         property bool primaryDismiss: false
-        property bool showSettings: false
+        property alias actions: headerActions.data
         signal dismissed()
         Layout.fillWidth: true
         implicitHeight: headerRow.implicitHeight + 16
@@ -797,12 +797,9 @@ Item {
                 Label { Layout.fillWidth: true; text: plugin.serviceName; color: "white"; font: QfTheme.tipFont; wrapMode: Text.Wrap }
                 Label { Layout.fillWidth: true; text: header.title; color: "white"; font: QfTheme.strongTitleFont; wrapMode: Text.Wrap }
             }
-            LocationButton {
-                visible: header.showSettings
-                enabled: !plugin.pending
-                Layout.minimumHeight: plugin.touchHeight
-                text: qsTranslate("AmazonLocationService", "Settings")
-                onClicked: settingsPopup.open()
+            RowLayout {
+                id: headerActions
+                visible: children.length > 0
             }
             LocationButton {
                 text: header.dismissText
@@ -988,7 +985,16 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
-            PanelHeader { title: qsTranslate("AmazonLocationService", "Route Search"); showSettings: true; onDismissed: panel.close() }
+            PanelHeader {
+                title: qsTranslate("AmazonLocationService", "Route Search")
+                actions: LocationButton {
+                    text: qsTranslate("AmazonLocationService", "Settings")
+                    Layout.minimumHeight: plugin.touchHeight
+                    enabled: !plugin.pending
+                    onClicked: settingsPopup.open()
+                }
+                onDismissed: panel.close()
+            }
             ScrollView {
                 id: form
                 Layout.fillWidth: true
@@ -1144,8 +1150,11 @@ Item {
                                         model: QfMapLayerModel { project: qgisProject; filters: Qgis.LayerFilters.HasGeometry }
                                         textRole: "Name"
                                         valueRole: "LayerPointer"
-                                        displayText: !count ? qsTranslate("AmazonLocationService", "No suitable layers")
-                                            : currentIndex < 0 ? qsTranslate("AmazonLocationService", "Select a layer") : currentText
+                                        displayText: {
+                                            if (count === 0) return qsTranslate("AmazonLocationService", "No suitable layers")
+                                            if (currentIndex < 0) return qsTranslate("AmazonLocationService", "Select a layer")
+                                            return currentText
+                                        }
                                     }
                                     LocationButton {
                                         text: qsTranslate("AmazonLocationService", "Select layer features")

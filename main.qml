@@ -1223,6 +1223,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: plugin.touchHeight
                                 enabled: plugin.canOptimize
+                                icon.source: Qt.resolvedUrl("icons/OptimizeOrder.svg")
                                 text: plugin.optimizing ? qsTranslate("AmazonLocationService", "Optimizing…") : qsTranslate("AmazonLocationService", "Optimize order")
                                 onClicked: plugin.optimize()
                             }
@@ -1317,9 +1318,15 @@ Item {
                     Layout.minimumHeight: 48
                     enabled: !plugin.pending && !plugin.searchHint
                     Accessible.description: plugin.statusText
-                    text: routeRequest.pending ? qsTranslate("AmazonLocationService", "Finding route…")
-                          : qsTranslate("AmazonLocationService", "Find route") + (width < 250 ? "\n" : " · ") + plugin.travelMode.label
-                            + (plugin.routeCriterion ? " · " + Routes.criterionLabel(plugin.routeCriterion) : "")
+                    text: {
+                        if (routeRequest.pending) return qsTranslate("AmazonLocationService", "Finding route…")
+                        const details = plugin.routeCriterion
+                            ? qsTranslate("AmazonLocationService", "%1 · %2", "Travel mode and route preference").arg(plugin.travelMode.label).arg(Routes.criterionLabel(plugin.routeCriterion))
+                            : plugin.travelMode.label
+                        return width < 250
+                            ? qsTranslate("AmazonLocationService", "Find route\n%1").arg(details)
+                            : qsTranslate("AmazonLocationService", "Find route · %1").arg(details)
+                    }
                     topInset: 0
                     bottomInset: 0
                     leftPadding: 8

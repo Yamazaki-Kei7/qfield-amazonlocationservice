@@ -156,6 +156,21 @@
         <translation>経路を検索</translation>
     </message>
     <message>
+        <source>%1 · %2</source>
+        <comment>Travel mode and route preference</comment>
+        <translation>%1・%2</translation>
+    </message>
+    <message>
+        <source>Find route
+%1</source>
+        <translation>経路を探索
+（%1）</translation>
+    </message>
+    <message>
+        <source>Find route · %1</source>
+        <translation>経路を探索（%1）</translation>
+    </message>
+    <message>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>

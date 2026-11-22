@@ -256,6 +256,10 @@
         <translation>地物を選択するレイヤー</translation>
     </message>
     <message>
+        <source>Select a layer</source>
+        <translation>レイヤーを選択</translation>
+    </message>
+    <message>
         <source>No suitable layers</source>
         <translation>選択できるレイヤーがありません</translation>
     </message>

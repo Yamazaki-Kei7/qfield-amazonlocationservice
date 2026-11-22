@@ -3,4 +3,4 @@ name=Amazon Location Service
 author=Yamazaki-Kei7
 description=Search places and optimize multi-stop routes with Amazon Location Service. 地点・住所の検索、6種類の移動手段での経路検索、訪問順の最適化ができます。
 icon=Arch_Amazon-Location-Service_32.svg
-version=1.17.0
+version=1.18.0

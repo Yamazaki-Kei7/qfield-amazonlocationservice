@@ -83,7 +83,9 @@ Tap **Add stops from map**, then tap a location to add it to the visit order. Fo
 
 After adding at least two stops, tap **Find route** at the bottom of the map to search in that order. If **Enter settings** appears instead, tap it to enter the Region and API key.
 
-**To add stops from a layer**, open **Add from layer** in Route Search, choose a layer under **Layer for feature selection**, and tap **Select layer features**. In **Filter by name or ID**, type part of the display name or a feature ID (for example, `42` or `FID 42`). Names match regardless of case. Tap **Clear** to show the whole layer again.
+**To add stops from a layer**, open **Add from layer** in Route Search, choose a layer under **Layer for feature selection**, and tap **Select layer features**. Tap **Select on map** and tap features in visit order. If several features from the chosen layer are under your finger, choose one by name and feature ID. Tap **Done** to return to Route Search or **Back to list** to review and remove visits.
+
+To select from the list, use **Filter by name or ID** to search for part of the display name or a feature ID (for example, `42` or `FID 42`). Names match regardless of case. Tap **Clear** to show the whole layer again.
 
 Tap a feature card to add it. A checkmark and visit number show its position in the route. You can change the filter to find your next stop and keep the visits already added. Tap the same card again to add a return visit. Each visit has its own button below the feature name. To undo a selection, tap the visit you want to remove (for example, **Visit 1 · Origin ×**). This also works when the route is full. Tap **Done** to return to the route.
 

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
+import QtQml.Models
 import org.qgis
 import org.qfield.core
 import org.qfield.gui
@@ -39,7 +40,17 @@ Item {
     property bool summaryDismissed: false
     readonly property var pending: routeRequest.pending || optimizeRequest.pending
     readonly property bool optimizing: !!optimizeRequest.pending
-    property bool picking: false
+    property string pickMode: ""
+    readonly property bool picking: pickMode !== ""
+    readonly property bool pickingFeatures: pickMode === "features"
+    property var featureLayer: null
+    readonly property bool featureLayerVisible: !!featureLayer && canvas.mapSettings.layers.includes(featureLayer)
+    onPickModeChanged: {
+        if (pickMode !== "features") {
+            featureLayer = null
+            mapHits.clear()
+        }
+    }
     property string message: ""
     readonly property string handlerName: "AmazonLocationRoutes"
     readonly property string serviceName: "Amazon Location Service"
@@ -90,13 +101,43 @@ Item {
             return true
         }
         if (!picking) return false
-        addMapPoint(screenPoint)
+        if (pickingFeatures) identifyFeature(screenPoint)
+        else addMapPoint(screenPoint)
         return true
     }
 
     function addMapPoint(screenPoint) {
         const mapPoint = canvas.mapSettings.screenToCoordinate(screenPoint)
         addStop(mapPoint, canvas.mapSettings.destinationCrs, qsTranslate("AmazonLocationService", "Map point"))
+    }
+
+    function identifyFeature(screenPoint) {
+        if (!canAddStop || !featureLayerVisible) return
+        const map = canvas.mapSettings
+        // Identify only the chosen layer, using the current map scale and touch location.
+        hitSettings.layers = [featureLayer]
+        hitSettings.destinationCrs = map.destinationCrs
+        hitSettings.outputSize = map.outputSize
+        hitSettings.outputDpi = map.outputDpi
+        hitSettings.extent = map.extent
+        hitSettings.rotation = map.rotation
+        hitSettings.isTemporal = map.isTemporal
+        hitSettings.temporalBegin = map.temporalBegin
+        hitSettings.temporalEnd = map.temporalEnd
+        hitTool.identify(hitSettings.coordinateToScreen(map.screenToCoordinate(screenPoint)))
+        if (mapHits.count === 1) {
+            addFeature(hitChoices.items.get(0).model)
+            mapHits.clear()
+        } else if (!mapHits.count) {
+            window.displayToast(qsTranslate("AmazonLocationService", "No feature from %1 here. Try another spot.").arg(featureLayer.name))
+        } else {
+            candidateList.positionViewAtBeginning()
+        }
+    }
+
+    function addFeature(feature) {
+        addStop(QfGeometryUtils.centroid(feature.geometry), feature.crs,
+                feature.featureName || ("FID " + feature.featureId), feature.currentLayer.id + ":" + feature.featureId)
     }
 
     function toWgs84(point, crs) {
@@ -148,7 +189,7 @@ Item {
     }
 
     function openPlaces(forRoute) {
-        picking = false
+        pickMode = ""
         preview = null
         places.forRoute = forRoute
         placeSearch.reset()
@@ -264,7 +305,7 @@ Item {
                 route.geometryWrapper.qgsGeometry = geometry
                 routeSummary = Routes.routeSummary(data.Routes[0])
                 summaryDismissed = false
-                picking = false
+                pickMode = ""
                 panel.close()
                 fitRouteOnMap(geometry)
             } catch (error) {
@@ -318,7 +359,7 @@ Item {
     Connections {
         target: iface
         function onLoadProjectTriggered() {
-            plugin.picking = false
+            plugin.pickMode = ""
             serviceButton.checked = false
             settingsPopup.close()
             places.close()
@@ -401,7 +442,7 @@ Item {
                 text: qsTranslate("AmazonLocationService", "Route Search")
                 iconSource: Qt.resolvedUrl("icon.svg")
                 onClicked: {
-                    plugin.picking = false
+                    plugin.pickMode = ""
                     plugin.preview = null
                     panel.open()
                 }
@@ -453,7 +494,7 @@ Item {
         Image {
             id: aim
             anchors.centerIn: parent
-            visible: plugin.picking && plugin.canAddStop
+            visible: plugin.pickMode === "point" && plugin.canAddStop
             source: Qt.resolvedUrl("icons/Crosshair.svg")
             Accessible.ignored: true
         }
@@ -513,6 +554,85 @@ Item {
 
     QfMultiFeatureListModel { id: matches }
 
+    MapSettings { id: hitSettings; project: qgisProject }
+    QfMultiFeatureListModel { id: mapHits }
+    QfIdentifyTool { id: hitTool; mapSettings: hitSettings; model: mapHits }
+    DelegateModel {
+        id: hitChoices
+        model: mapHits
+        delegate: ItemDelegate {
+            width: ListView.view.width
+            implicitHeight: Math.max(plugin.touchHeight, implicitContentHeight + topPadding + bottomPadding)
+            enabled: plugin.canAddStop && plugin.featureLayerVisible
+            text: model.featureName ? model.featureName + " · FID " + model.featureId : "FID " + model.featureId
+            contentItem: Label {
+                text: parent.text
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+                color: QfTheme.mainTextColor
+            }
+            onClicked: {
+                plugin.addFeature(model)
+                mapHits.clear()
+            }
+        }
+    }
+
+    MapCard {
+        visible: plugin.pickingFeatures
+        clearsCornerControls: true
+        padding: 8
+        contentItem: ColumnLayout {
+            Label {
+                Layout.fillWidth: true
+                font: QfTheme.strongResultFont
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+                text: plugin.featureLayer ? plugin.featureLayer.name : ""
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: !plugin.featureLayerVisible ? qsTranslate("AmazonLocationService", "Show this layer on the map to select its features.")
+                    : plugin.atLimit ? plugin.limitText
+                    : candidateList.count > 1 ? qsTranslate("AmazonLocationService", "Choose a feature to add, or tap elsewhere.")
+                    : qsTranslate("AmazonLocationService", "Tap a feature to add it to the route.")
+            }
+            ListView {
+                id: candidateList
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(contentHeight, plugin.canvas.height / 4)
+                visible: candidateList.count > 1 && plugin.featureLayerVisible
+                clip: true
+                model: hitChoices
+                ScrollBar.vertical: ScrollBar {}
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                LocationButton {
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: plugin.touchHeight
+                    text: qsTranslate("AmazonLocationService", "Back to list")
+                    onClicked: {
+                        plugin.pickMode = ""
+                        panel.open()
+                        features.open()
+                    }
+                }
+                LocationButton {
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: plugin.touchHeight
+                    primary: true
+                    text: qsTranslate("AmazonLocationService", "Done")
+                    onClicked: {
+                        plugin.pickMode = ""
+                        panel.open()
+                    }
+                }
+            }
+        }
+    }
+
     MapCard {
         id: resultCard
         visible: !!plugin.routeSummary && !plugin.summaryDismissed && !plugin.picking && !plugin.preview
@@ -550,7 +670,7 @@ Item {
     MapCard {
         id: guide
         clearsCornerControls: true
-        visible: plugin.picking
+        visible: plugin.pickMode === "point"
         padding: 8
         contentItem: ColumnLayout {
             spacing: 0
@@ -571,7 +691,7 @@ Item {
                     Layout.minimumHeight: plugin.touchHeight
                     enabled: !plugin.pending
                     onClicked: {
-                        plugin.picking = false
+                        plugin.pickMode = ""
                         panel.open()
                     }
                 }
@@ -601,7 +721,7 @@ Item {
                     primary: true
                     onClicked: {
                         if (plugin.searchHint) {
-                            plugin.picking = false
+                            plugin.pickMode = ""
                             panel.open()
                             settingsPopup.open()
                         } else {
@@ -939,7 +1059,7 @@ Item {
                         enabled: plugin.canAddStop
                         onClicked: {
                             panel.close()
-                            plugin.picking = true
+                            plugin.pickMode = "point"
                         }
                     }
                     LocationButton {
@@ -967,7 +1087,10 @@ Item {
                         Layout.fillWidth: true
                         Layout.minimumHeight: plugin.touchHeight
                         enabled: !!layers.currentValue && !plugin.pending
-                        onClicked: features.open()
+                        onClicked: {
+                            featureFilter.clear()
+                            features.open()
+                        }
                     }
                     SectionTitle {
                         Layout.topMargin: 8
@@ -1250,10 +1373,7 @@ Item {
         }
         onAboutToShow: refreshList()
         onAboutToHide: filterDelay.stop()
-        onClosed: {
-            featureFilter.clear()
-            matches.clear()
-        }
+        onClosed: matches.clear()
         Timer {
             id: filterDelay
             interval: 200
@@ -1279,6 +1399,22 @@ Item {
                     text: qsTranslate("AmazonLocationService", "%1 / %2 route stops").arg(plugin.stops.length).arg(plugin.maxStops)
                     font: QfTheme.tipFont
                     color: QfTheme.secondaryTextColor
+                }
+            }
+            LocationButton {
+                Layout.fillWidth: true
+                Layout.leftMargin: plugin.gutter
+                Layout.rightMargin: plugin.gutter
+                Layout.minimumHeight: plugin.touchHeight
+                text: qsTranslate("AmazonLocationService", "Select on map")
+                icon.source: Qt.resolvedUrl("icons/SelectFeatures.svg")
+                enabled: !!layers.currentValue && plugin.canAddStop
+                onClicked: {
+                    Qt.inputMethod.hide()
+                    plugin.featureLayer = layers.currentValue
+                    plugin.pickMode = "features"
+                    features.close()
+                    panel.close()
                 }
             }
             Label {
@@ -1374,7 +1510,7 @@ Item {
                                     wrapMode: Text.Wrap
                                 }
                             }
-                            onClicked: plugin.addStop(QfGeometryUtils.centroid(model.geometry), model.crs, text, featureCard.featureKey)
+                            onClicked: plugin.addFeature(model)
                         }
                         Flow {
                             leftPadding: addVisit.leftPadding

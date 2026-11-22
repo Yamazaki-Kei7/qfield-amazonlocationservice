@@ -596,5 +596,29 @@
         <source>Could not read the search results.</source>
         <translation>検索結果を読み取れませんでした。</translation>
     </message>
+    <message>
+        <source>Select on map</source>
+        <translation>地図で選択</translation>
+    </message>
+    <message>
+        <source>Tap a feature to add it to the route.</source>
+        <translation>訪問したい地物を地図上でタップしてください。</translation>
+    </message>
+    <message>
+        <source>Choose a feature to add, or tap elsewhere.</source>
+        <translation>追加する地物を選ぶか、地図上の別の場所をタップしてください。</translation>
+    </message>
+    <message>
+        <source>No feature from %1 here. Try another spot.</source>
+        <translation>この位置には「%1」の地物が見つかりません。別の場所をタップしてください。</translation>
+    </message>
+    <message>
+        <source>Show this layer on the map to select its features.</source>
+        <translation>このレイヤーを地図に表示すると、地物を選択できます。</translation>
+    </message>
+    <message>
+        <source>Back to list</source>
+        <translation>リストに戻る</translation>
+    </message>
 </context>
 </TS>

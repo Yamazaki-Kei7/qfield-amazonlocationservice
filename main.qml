@@ -38,6 +38,8 @@ Item {
     property string optimizeNote: ""
     property string routeSummary: ""
     property bool summaryDismissed: false
+    property bool showRouteStops: true
+    property bool showRouteLine: true
     readonly property var pending: routeRequest.pending || optimizeRequest.pending
     readonly property bool optimizing: !!optimizeRequest.pending
     property string pickMode: ""
@@ -254,6 +256,8 @@ Item {
         optimizeRequest.cancel()
         route.geometryWrapper.clear()
         routeSummary = ""
+        showRouteStops = true
+        showRouteLine = true
         message = ""
         optimizeNote = ""
     }
@@ -458,6 +462,7 @@ Item {
 
     QfGeometryRenderer {
         id: route
+        visible: plugin.showRouteLine
         parent: plugin.canvas
         anchors.fill: parent
         mapSettings: plugin.canvas.mapSettings
@@ -487,6 +492,7 @@ Item {
                     mapPoint: transformPoint.projectedPosition
                 }
                 readonly property bool isPlace: index === plugin.stops.length
+                visible: isPlace || plugin.showRouteStops
                 width: isPlace ? 30 : plugin.stopMarkerSize
                 height: width
                 radius: width / 2
@@ -642,7 +648,9 @@ Item {
         width: Math.min(implicitWidth, parent.width - 2 * plugin.gutter)
         clearsCornerControls: true
         padding: 8
-        contentItem: RowLayout {
+        contentItem: GridLayout {
+            columns: 2
+            rowSpacing: 0
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: 4
@@ -665,6 +673,9 @@ Item {
             CloseButton {
                 Accessible.name: qsTranslate("AmazonLocationService", "Close route summary")
                 onClicked: plugin.summaryDismissed = true
+            }
+            RouteVisibilityControls {
+                Layout.columnSpan: 2
             }
         }
     }
@@ -728,6 +739,21 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    component RouteVisibilityControls: RowLayout {
+        CheckBox {
+            text: qsTranslate("AmazonLocationService", "Stops")
+            checked: plugin.showRouteStops
+            onToggled: plugin.showRouteStops = checked
+            Layout.minimumHeight: plugin.touchHeight
+        }
+        CheckBox {
+            text: qsTranslate("AmazonLocationService", "Route line")
+            checked: plugin.showRouteLine
+            onToggled: plugin.showRouteLine = checked
+            Layout.minimumHeight: plugin.touchHeight
         }
     }
 
@@ -1305,6 +1331,9 @@ Item {
                     text: plugin.statusText || (plugin.pending ? "" : plugin.routeSummary)
                     textFormat: Text.PlainText
                     color: plugin.message ? plugin.colors.danger.foreground : QfTheme.mainTextColor
+                }
+                RouteVisibilityControls {
+                    visible: !!plugin.routeSummary
                 }
                 LocationButton {
                     Layout.fillWidth: true

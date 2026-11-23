@@ -4,6 +4,14 @@
 <context>
     <name>AmazonLocationService</name>
     <message>
+        <source>Stops</source>
+        <translation>地点</translation>
+    </message>
+    <message>
+        <source>Route line</source>
+        <translation>経路線</translation>
+    </message>
+    <message>
         <source>%1 supports up to %2 stops. Remove stops or change the travel mode.</source>
         <translation>%1で指定できる地点は%2か所までです。地点を減らすか、移動手段を変更してください。</translation>
     </message>

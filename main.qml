@@ -38,8 +38,8 @@ Item {
     property string optimizeNote: ""
     property string routeSummary: ""
     property bool summaryDismissed: false
-    property bool showRouteStops: true
-    property bool showRouteLine: true
+    property alias showRouteStops: stopsSwitch.checked
+    property alias showRouteLine: routeLineSwitch.checked
     readonly property var pending: routeRequest.pending || optimizeRequest.pending
     readonly property bool optimizing: !!optimizeRequest.pending
     property string pickMode: ""
@@ -394,6 +394,7 @@ Item {
 
     component MapVisibilitySwitch: Switch {
         id: control
+        checked: true
         anchors.horizontalCenter: parent.horizontalCenter
         implicitWidth: Math.max(plugin.touchHeight, caption.implicitWidth + 8)
         implicitHeight: Math.max(plugin.touchHeight, caption.contentHeight + track.height + 6)
@@ -492,14 +493,12 @@ Item {
                     color: Colors.capsuleBorder
                 }
                 MapVisibilitySwitch {
+                    id: stopsSwitch
                     text: qsTranslate("AmazonLocationService", "Stops")
-                    checked: plugin.showRouteStops
-                    onToggled: plugin.showRouteStops = checked
                 }
                 MapVisibilitySwitch {
+                    id: routeLineSwitch
                     text: qsTranslate("AmazonLocationService", "Route line")
-                    checked: plugin.showRouteLine
-                    onToggled: plugin.showRouteLine = checked
                 }
             }
         }

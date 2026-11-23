@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQml.Models
+import QtCore
 import org.qgis
 import org.qfield.core
 import org.qfield.gui
@@ -89,7 +90,15 @@ Item {
         return ""
     }
 
+    Settings {
+        id: connectionSettings
+        category: "plugins/amazon-location-service"
+    }
+
     Component.onCompleted: {
+        regionField.text = connectionSettings.value("region", regionField.text)
+        keyField.text = connectionSettings.value("apiKey", "")
+        rememberKey.checked = keyField.text.length > 0
         iface.addItemToPluginsToolbar(searchGroup)
         handler.registerHandler(handlerName, pickPoint, QfMapCanvasPointHandler.Priority.High)
     }
@@ -1444,7 +1453,12 @@ Item {
 
     RoutePopup {
         id: settingsPopup
-        height: Math.min(340, parent.height - 16)
+        height: Math.min(390, parent.height - 16)
+        onAboutToHide: {
+            connectionSettings.setValue("region", plugin.region)
+            connectionSettings.setValue("apiKey", rememberKey.checked ? plugin.apiKey : "")
+            connectionSettings.sync()
+        }
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
@@ -1472,11 +1486,14 @@ Item {
                     TextField {
                         id: keyField
                         Layout.fillWidth: true
-                        Layout.bottomMargin: 12
                         Accessible.name: keyLabel.text
                         echoMode: TextInput.Password
                         readOnly: !!plugin.pending
                         onTextEdited: plugin.message = ""
+                    }
+                    CheckBox {
+                        id: rememberKey
+                        text: qsTranslate("AmazonLocationService", "Save API key on this device")
                     }
                     Label {
                         Layout.fillWidth: true

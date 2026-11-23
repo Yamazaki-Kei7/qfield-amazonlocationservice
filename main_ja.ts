@@ -379,6 +379,10 @@
         <translation>Amazon Location の API キー</translation>
     </message>
     <message>
+        <source>Save API key on this device</source>
+        <translation>この端末にAPIキーを保存</translation>
+    </message>
+    <message>
         <source>These settings apply to place and route searches.</source>
         <translation>この設定は地点検索と経路検索で共通です。</translation>
     </message>

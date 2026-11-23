@@ -54,6 +54,8 @@ Tap the Amazon Location Service button at the upper right of the map. Choose **P
 
 In either search screen, tap **Settings**, enter the **AWS Region** where you created your key and the **Amazon Location API key**, then tap **Done**. Both searches use these settings.
 
+QField remembers the Region on this device. To reuse the key after restarting QField, select **Save API key on this device** before tapping **Done**. This stores the key unencrypted in QField’s local settings. To forget a saved key, uncheck the box and tap **Done**. You can still use the key for the current session.
+
 <img src="img/route-connection-settings.png" alt="Settings dialog with fields for the AWS Region and Amazon Location API key" width="360">
 
 ### Find a place and show it on the map
@@ -127,7 +129,6 @@ A card at the bottom of the map shows the estimated travel time and total distan
 - Adding, reordering, or removing stops clears a displayed route. Changing the order through optimization does the same. Search again to display the route for the new order.
 - Visit order optimization cannot be used when the perimeter of the bounding box around all stops exceeds 500 km. Reduce the stops or reorder them manually and search for a route.
 - Opening a different project clears the place marker, stops, and route.
-- The plugin keeps the API key in memory for the current session. Enter it again after restarting QField.
 
 ## Troubleshooting
 

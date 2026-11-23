@@ -256,8 +256,6 @@ Item {
         optimizeRequest.cancel()
         route.geometryWrapper.clear()
         routeSummary = ""
-        showRouteStops = true
-        showRouteLine = true
         message = ""
         optimizeNote = ""
     }
@@ -383,78 +381,125 @@ Item {
     }
 
     component SearchToolButton: QfToolButton {
+        anchors.horizontalCenter: parent.horizontalCenter
         round: true
-        visible: searchGroup.expansion > 0
-        display: AbstractButton.IconOnly
         bgcolor: Colors.blue
         opacity: enabled ? 1 : 0.4
         Accessible.name: text
+        display: AbstractButton.IconOnly
         ToolTip.text: text
-        ToolTip.visible: hovered
+        ToolTip.visible: hovered || pressed
         ToolTip.delay: serviceButton.ToolTip.delay
+    }
+
+    component MapVisibilitySwitch: Switch {
+        id: control
+        anchors.horizontalCenter: parent.horizontalCenter
+        implicitWidth: Math.max(plugin.touchHeight, caption.implicitWidth + 8)
+        implicitHeight: Math.max(plugin.touchHeight, caption.contentHeight + track.height + 6)
+        padding: 0
+        indicator: Rectangle {
+            id: track
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: (control.height + caption.contentHeight - height) / 2 + 2
+            width: 32
+            height: 18
+            radius: height / 2
+            color: control.checked ? Colors.orange : Colors.capsuleSurface
+            border.color: control.checked ? Colors.orange : Colors.capsuleBorder
+            Rectangle {
+                x: control.checked ? parent.width - width - 3 : 3
+                anchors.verticalCenter: parent.verticalCenter
+                width: 12
+                height: width
+                radius: width / 2
+                color: control.checked ? Colors.ink : "white"
+                Behavior on x { NumberAnimation { duration: 100 } }
+            }
+        }
+        contentItem: Label {
+            id: caption
+            text: control.text
+            font: QfTheme.tipFont
+            color: "white"
+            bottomPadding: track.height + 4
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
     }
 
     Item {
         id: searchGroup
-        readonly property real collapsedHeight: serviceButton.height + 2 * buttonColumn.padding
-        property real expansion: serviceButton.checked ? 1 : 0
-        implicitWidth: buttonColumn.implicitWidth
-        implicitHeight: collapsedHeight + expansion * (buttonColumn.implicitHeight - collapsedHeight)
-        clip: true
-
-        Behavior on expansion {
-            NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
-        }
-
+        implicitWidth: capsule.width + 8
+        implicitHeight: capsule.height + 8
         Rectangle {
-            anchors.fill: parent
+            id: capsule
+            x: 4
+            y: 4
+            width: serviceButton.checked ? Math.max(serviceButton.width, menu.implicitWidth) + 8 : serviceButton.width
+            height: serviceButton.height + (serviceButton.checked ? menu.implicitHeight + 10 : 0)
             radius: width / 2
             color: Colors.ink
-            opacity: searchGroup.expansion
-        }
-
-        Column {
-            id: buttonColumn
-            padding: 4
-            spacing: padding
+            border.color: serviceButton.checked ? Colors.capsuleBorder : "transparent"
             QfToolButton {
                 id: serviceButton
-                readonly property int iconSize: Math.round(width * 0.7)
+                anchors.horizontalCenter: parent.horizontalCenter
+                readonly property int logoSize: Math.round(width * 0.7)
                 round: true
                 checkable: true
                 bgcolor: Colors.serviceRed
                 padding: 0
                 iconSource: plugin.serviceIcon
                 iconColor: "transparent"
-                icon.width: serviceButton.iconSize
-                icon.height: serviceButton.iconSize
+                icon.width: logoSize
+                icon.height: logoSize
                 bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : ""
                 bottomRightIndicatorBgColor: Colors.orange
                 bottomRightIndicatorFgColor: Colors.ink
                 statusBadge.bottomMargin: 0
                 statusBadge.rightMargin: 0
                 Accessible.name: plugin.serviceName
-                Accessible.description: checked ? qsTranslate("AmazonLocationService", "Hide search buttons") : qsTranslate("AmazonLocationService", "Show search buttons")
+                Accessible.description: checked ? qsTranslate("AmazonLocationService", "Close map tools") : qsTranslate("AmazonLocationService", "Open map tools")
                 ToolTip.text: plugin.serviceName
                 ToolTip.visible: hovered && !checked
                 ToolTip.delay: 600
             }
-
-            SearchToolButton {
-                text: qsTranslate("AmazonLocationService", "Place Search")
-                iconSource: Qt.resolvedUrl("poi-search.svg")
-                enabled: serviceButton.checked && !plugin.pending
-                onClicked: plugin.openPlaces(false)
-            }
-
-            SearchToolButton {
-                enabled: serviceButton.checked
-                text: qsTranslate("AmazonLocationService", "Route Search")
-                iconSource: Qt.resolvedUrl("icon.svg")
-                onClicked: {
-                    plugin.pickMode = ""
-                    plugin.preview = null
-                    panel.open()
+            Column {
+                id: menu
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: serviceButton.bottom
+                spacing: 4
+                visible: serviceButton.checked
+                SearchToolButton {
+                    text: qsTranslate("AmazonLocationService", "Place Search")
+                    iconSource: Qt.resolvedUrl("poi-search.svg")
+                    enabled: !plugin.pending
+                    onClicked: plugin.openPlaces(false)
+                }
+                SearchToolButton {
+                    text: qsTranslate("AmazonLocationService", "Route Search")
+                    iconSource: Qt.resolvedUrl("icon.svg")
+                    onClicked: {
+                        plugin.pickMode = ""
+                        plugin.preview = null
+                        panel.open()
+                    }
+                }
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: serviceButton.width / 2
+                    height: 1
+                    color: Colors.capsuleBorder
+                }
+                MapVisibilitySwitch {
+                    text: qsTranslate("AmazonLocationService", "Stops")
+                    checked: plugin.showRouteStops
+                    onToggled: plugin.showRouteStops = checked
+                }
+                MapVisibilitySwitch {
+                    text: qsTranslate("AmazonLocationService", "Route line")
+                    checked: plugin.showRouteLine
+                    onToggled: plugin.showRouteLine = checked
                 }
             }
         }
@@ -648,9 +693,7 @@ Item {
         width: Math.min(implicitWidth, parent.width - 2 * plugin.gutter)
         clearsCornerControls: true
         padding: 8
-        contentItem: GridLayout {
-            columns: 2
-            rowSpacing: 0
+        contentItem: RowLayout {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: 4
@@ -673,9 +716,6 @@ Item {
             CloseButton {
                 Accessible.name: qsTranslate("AmazonLocationService", "Close route summary")
                 onClicked: plugin.summaryDismissed = true
-            }
-            RouteVisibilityControls {
-                Layout.columnSpan: 2
             }
         }
     }
@@ -739,21 +779,6 @@ Item {
                     }
                 }
             }
-        }
-    }
-
-    component RouteVisibilityControls: RowLayout {
-        CheckBox {
-            text: qsTranslate("AmazonLocationService", "Stops")
-            checked: plugin.showRouteStops
-            onToggled: plugin.showRouteStops = checked
-            Layout.minimumHeight: plugin.touchHeight
-        }
-        CheckBox {
-            text: qsTranslate("AmazonLocationService", "Route line")
-            checked: plugin.showRouteLine
-            onToggled: plugin.showRouteLine = checked
-            Layout.minimumHeight: plugin.touchHeight
         }
     }
 
@@ -1331,9 +1356,6 @@ Item {
                     text: plugin.statusText || (plugin.pending ? "" : plugin.routeSummary)
                     textFormat: Text.PlainText
                     color: plugin.message ? plugin.colors.danger.foreground : QfTheme.mainTextColor
-                }
-                RouteVisibilityControls {
-                    visible: !!plugin.routeSummary
                 }
                 LocationButton {
                     Layout.fillWidth: true

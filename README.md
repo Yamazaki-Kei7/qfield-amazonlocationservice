@@ -48,9 +48,9 @@ If installation from a URL is unavailable, download [amazon-location-service.zip
 
 ### Connection settings
 
-Tap the Amazon Location Service button at the upper right of the map. The pin opens **Place Search** and the route line opens **Route Search**. Tap the service button again to close the menu.
+Tap the Amazon Location Service button at the upper right of the map. Choose **Place Search** or **Route Search** from the capsule. Tap the service button again to close the menu.
 
-<img src="img/amazon-location-menu.png" alt="Expanded service menu with the Place Search and Route Search buttons" width="96">
+<img src="img/amazon-location-menu.png" alt="Amazon Location capsule with search actions and map visibility switches" width="60">
 
 In either search screen, tap **Settings**, enter the **AWS Region** where you created your key and the **Amazon Location API key**, then tap **Done**. Both searches use these settings.
 
@@ -116,7 +116,7 @@ With Car, Walking, Scooter, or Truck and at least three stops, **Optimize order*
 
 Once the search completes, the map displays the entire route. In the example below, the blue line follows roads in the order **1 → 2 → 3**. The route and numbered stops appear as temporary overlays on your project map.
 
-A card at the bottom of the map shows the estimated travel time and total distance. Uncheck **Stops** or **Route line** to see features underneath. Check either box to show that part of the result again without another search. If you close the card with **×**, you can still change both options in **Route Search**.
+A card at the bottom of the map shows the estimated travel time and total distance. Open the Amazon Location capsule at the upper right and switch **Stops** or **Route line** off to see features underneath. Both switches are available before a search and after you close the result card. Switch either one back on to restore it without searching again. Your choices carry over to the next search.
 
 <img src="img/driving-route-result.png" alt="Map with a blue driving route from origin 1 through waypoint 2 to destination 3" width="360">
 

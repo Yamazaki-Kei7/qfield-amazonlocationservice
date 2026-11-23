@@ -112,12 +112,12 @@
         <translation>経路を検索できませんでした</translation>
     </message>
     <message>
-        <source>Hide search buttons</source>
-        <translation>検索ボタンを隠す</translation>
+        <source>Close map tools</source>
+        <translation>地図ツールを閉じる</translation>
     </message>
     <message>
-        <source>Show search buttons</source>
-        <translation>検索ボタンを表示する</translation>
+        <source>Open map tools</source>
+        <translation>地図ツールを開く</translation>
     </message>
     <message>
         <source>Place Search</source>

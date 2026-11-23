@@ -3,6 +3,8 @@
 const ink = "#232f3e"
 const orange = "#ff9900"
 const serviceRed = "#dd344c"
+const capsuleSurface = "#35485d"
+const capsuleBorder = "#8192a3"
 const blue = "#005ea8"
 const primary = { background: orange, foreground: ink }
 

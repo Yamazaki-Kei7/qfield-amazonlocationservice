@@ -383,10 +383,10 @@ Item {
     component SearchToolButton: QfToolButton {
         anchors.horizontalCenter: parent.horizontalCenter
         round: true
+        display: AbstractButton.IconOnly
         bgcolor: Colors.blue
         opacity: enabled ? 1 : 0.4
         Accessible.name: text
-        display: AbstractButton.IconOnly
         ToolTip.text: text
         ToolTip.visible: hovered || pressed
         ToolTip.delay: serviceButton.ToolTip.delay
@@ -394,6 +394,7 @@ Item {
 
     component MapVisibilitySwitch: Switch {
         id: control
+        readonly property real captionGap: 4
         checked: true
         anchors.horizontalCenter: parent.horizontalCenter
         implicitWidth: Math.max(plugin.touchHeight, caption.implicitWidth + 8)
@@ -402,14 +403,15 @@ Item {
         indicator: Rectangle {
             id: track
             anchors.horizontalCenter: parent.horizontalCenter
-            y: (control.height + caption.contentHeight - height) / 2 + 2
+            y: (control.height + caption.contentHeight + control.captionGap - height) / 2
             width: 32
             height: 18
             radius: height / 2
             color: control.checked ? Colors.orange : Colors.capsuleSurface
             border.color: control.checked ? Colors.orange : Colors.capsuleBorder
             Rectangle {
-                x: control.checked ? parent.width - width - 3 : 3
+                readonly property real inset: (parent.height - height) / 2
+                x: control.checked ? parent.width - width - inset : inset
                 anchors.verticalCenter: parent.verticalCenter
                 width: 12
                 height: width
@@ -423,7 +425,7 @@ Item {
             text: control.text
             font: QfTheme.tipFont
             color: "white"
-            bottomPadding: track.height + 4
+            bottomPadding: track.height + control.captionGap
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }
@@ -431,74 +433,80 @@ Item {
 
     Item {
         id: searchGroup
-        implicitWidth: capsule.width + 8
-        implicitHeight: capsule.height + 8
+        readonly property real margin: 4
+        implicitWidth: capsule.width + 2 * margin
+        implicitHeight: capsule.height + 2 * margin
         Rectangle {
             id: capsule
-            x: 4
-            y: 4
-            width: serviceButton.checked ? Math.max(serviceButton.width, menu.implicitWidth) + 8 : serviceButton.width
-            height: serviceButton.height + (serviceButton.checked ? menu.implicitHeight + 10 : 0)
+            x: searchGroup.margin
+            y: searchGroup.margin
+            width: capsuleColumn.width
+            height: capsuleColumn.height
             radius: width / 2
             color: Colors.ink
             border.color: serviceButton.checked ? Colors.capsuleBorder : "transparent"
-            QfToolButton {
-                id: serviceButton
-                anchors.horizontalCenter: parent.horizontalCenter
-                readonly property int logoSize: Math.round(width * 0.7)
-                round: true
-                checkable: true
-                bgcolor: Colors.serviceRed
-                padding: 0
-                iconSource: plugin.serviceIcon
-                iconColor: "transparent"
-                icon.width: logoSize
-                icon.height: logoSize
-                bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : ""
-                bottomRightIndicatorBgColor: Colors.orange
-                bottomRightIndicatorFgColor: Colors.ink
-                statusBadge.bottomMargin: 0
-                statusBadge.rightMargin: 0
-                Accessible.name: plugin.serviceName
-                Accessible.description: checked ? qsTranslate("AmazonLocationService", "Close map tools") : qsTranslate("AmazonLocationService", "Open map tools")
-                ToolTip.text: plugin.serviceName
-                ToolTip.visible: hovered && !checked
-                ToolTip.delay: 600
-            }
             Column {
-                id: menu
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: serviceButton.bottom
-                spacing: 4
-                visible: serviceButton.checked
-                SearchToolButton {
-                    text: qsTranslate("AmazonLocationService", "Place Search")
-                    iconSource: Qt.resolvedUrl("poi-search.svg")
-                    enabled: !plugin.pending
-                    onClicked: plugin.openPlaces(false)
-                }
-                SearchToolButton {
-                    text: qsTranslate("AmazonLocationService", "Route Search")
-                    iconSource: Qt.resolvedUrl("icon.svg")
-                    onClicked: {
-                        plugin.pickMode = ""
-                        plugin.preview = null
-                        panel.open()
-                    }
-                }
-                Rectangle {
+                id: capsuleColumn
+                QfToolButton {
+                    id: serviceButton
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: serviceButton.width / 2
-                    height: 1
-                    color: Colors.capsuleBorder
+                    readonly property int iconSize: Math.round(width * 0.7)
+                    round: true
+                    checkable: true
+                    bgcolor: Colors.serviceRed
+                    padding: 0
+                    iconSource: plugin.serviceIcon
+                    iconColor: "transparent"
+                    icon.width: serviceButton.iconSize
+                    icon.height: serviceButton.iconSize
+                    bottomRightIndicatorText: plugin.picking ? String(plugin.stops.length) : ""
+                    bottomRightIndicatorBgColor: Colors.orange
+                    bottomRightIndicatorFgColor: Colors.ink
+                    statusBadge.bottomMargin: 0
+                    statusBadge.rightMargin: 0
+                    Accessible.name: plugin.serviceName
+                    Accessible.description: checked ? qsTranslate("AmazonLocationService", "Close map tools") : qsTranslate("AmazonLocationService", "Open map tools")
+                    ToolTip.text: plugin.serviceName
+                    ToolTip.visible: hovered && !checked
+                    ToolTip.delay: 600
                 }
-                MapVisibilitySwitch {
-                    id: stopsSwitch
-                    text: qsTranslate("AmazonLocationService", "Stops")
-                }
-                MapVisibilitySwitch {
-                    id: routeLineSwitch
-                    text: qsTranslate("AmazonLocationService", "Route line")
+                Column {
+                    id: menu
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: serviceButton.checked
+                    spacing: 4
+                    leftPadding: 4
+                    rightPadding: 4
+                    bottomPadding: 10
+                    SearchToolButton {
+                        text: qsTranslate("AmazonLocationService", "Place Search")
+                        iconSource: Qt.resolvedUrl("poi-search.svg")
+                        enabled: !plugin.pending
+                        onClicked: plugin.openPlaces(false)
+                    }
+                    SearchToolButton {
+                        text: qsTranslate("AmazonLocationService", "Route Search")
+                        iconSource: Qt.resolvedUrl("icon.svg")
+                        onClicked: {
+                            plugin.pickMode = ""
+                            plugin.preview = null
+                            panel.open()
+                        }
+                    }
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: serviceButton.width / 2
+                        height: 1
+                        color: Colors.capsuleBorder
+                    }
+                    MapVisibilitySwitch {
+                        id: stopsSwitch
+                        text: qsTranslate("AmazonLocationService", "Stops")
+                    }
+                    MapVisibilitySwitch {
+                        id: routeLineSwitch
+                        text: qsTranslate("AmazonLocationService", "Route line")
+                    }
                 }
             }
         }

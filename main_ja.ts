@@ -4,6 +4,14 @@
 <context>
     <name>AmazonLocationService</name>
     <message>
+        <source>Stops</source>
+        <translation>地点</translation>
+    </message>
+    <message>
+        <source>Route line</source>
+        <translation>経路線</translation>
+    </message>
+    <message>
         <source>%1 supports up to %2 stops. Remove stops or change the travel mode.</source>
         <translation>%1で指定できる地点は%2か所までです。地点を減らすか、移動手段を変更してください。</translation>
     </message>
@@ -104,12 +112,12 @@
         <translation>経路を検索できませんでした</translation>
     </message>
     <message>
-        <source>Hide search buttons</source>
-        <translation>検索ボタンを隠す</translation>
+        <source>Close map tools</source>
+        <translation>地図ツールを閉じる</translation>
     </message>
     <message>
-        <source>Show search buttons</source>
-        <translation>検索ボタンを表示する</translation>
+        <source>Open map tools</source>
+        <translation>地図ツールを開く</translation>
     </message>
     <message>
         <source>Place Search</source>

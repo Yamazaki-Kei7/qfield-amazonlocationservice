@@ -4,12 +4,13 @@ const worldEdge = Math.PI * radius
 const minImage = 64
 const maxImage = 1400
 const overscan = 1.15
+const clamp = (value, low, high) => Math.max(low, Math.min(high, value))
 
 function frameFor(points, width, height) {
     if (!(width > 0 && height > 0) || !points.length
             || !points.every(p => Number.isFinite(p.x) && Number.isFinite(p.y))) return null
-    const clamp = value => Math.max(-worldEdge, Math.min(worldEdge, value))
-    const xs = points.map(p => clamp(p.x)), ys = points.map(p => clamp(p.y))
+    const xs = points.map(p => clamp(p.x, -worldEdge, worldEdge))
+    const ys = points.map(p => clamp(p.y, -worldEdge, worldEdge))
     const west = Math.min.apply(null, xs), east = Math.max.apply(null, xs)
     const south = Math.min.apply(null, ys), north = Math.max.apply(null, ys)
     const spanX = east - west, spanY = north - south
@@ -19,12 +20,12 @@ function frameFor(points, width, height) {
     // Each AWS image has square Mercator pixels, even for a projected QField project.
     const viewResolution = Math.sqrt(spanX * spanY / (width * height))
     const resolution = Math.max(viewResolution, overscan * Math.max(spanX, spanY) / maxImage)
-    const pixels = span => Math.max(minImage, Math.min(maxImage, Math.ceil(span * overscan / resolution)))
+    const pixels = span => clamp(Math.ceil(span * overscan / resolution), minImage, maxImage)
     const w = pixels(spanX), h = pixels(spanY)
     const dx = Math.min(2 * worldEdge, resolution * w)
     const dy = Math.min(2 * worldEdge, resolution * h)
-    const left = Math.max(-worldEdge, Math.min(worldEdge - dx, (east + west - dx) / 2))
-    const bottom = Math.max(-worldEdge, Math.min(worldEdge - dy, (north + south - dy) / 2))
+    const left = clamp((east + west - dx) / 2, -worldEdge, worldEdge - dx)
+    const bottom = clamp((north + south - dy) / 2, -worldEdge, worldEdge - dy)
     return {west: left, east: left + dx, south: bottom, north: bottom + dy, width: w, height: h,
             view: {west, east, south, north, resolution: viewResolution}}
 }

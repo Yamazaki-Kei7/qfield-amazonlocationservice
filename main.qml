@@ -26,7 +26,6 @@ Item {
     }
     readonly property url termsUrl: "https://aws.amazon.com/jp/service-terms/"
     readonly property url attributionUrl: "https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html"
-    readonly property string mapError: qsTranslate("AmazonLocationService", "Could not display the map. Check your connection, region and Maps API key permissions, then select the map again.")
     property var preview: null
     property bool needsOrigin: false
     property var stops: []
@@ -67,7 +66,8 @@ Item {
     readonly property int gutter: 16
     readonly property int stopMarkerSize: 24
     readonly property int touchHeight: 44
-    readonly property real overlayBottomMargin: Math.max(window.sceneBottomMargin, canvas.bottomMargin) + gutter
+    readonly property real safeBottomMargin: Math.max(window.sceneBottomMargin, canvas.bottomMargin)
+    readonly property real overlayBottomMargin: safeBottomMargin + gutter
     readonly property string region: regionField.text.trim()
     readonly property string apiKey: keyField.text.trim()
     readonly property int maxStops: Routes.stopLimit(travelMode.id)
@@ -519,26 +519,28 @@ Item {
                         }
                     }
                     Repeater {
-                        model: basemap.active ? ["Standard", "Satellite"] : []
+                        model: basemap.active ? [
+                            {id: "Standard", label: qsTranslate("AmazonLocationService", "Street map"), icon: "icons/Layers.svg"},
+                            {id: "Satellite", label: qsTranslate("AmazonLocationService", "Satellite"), icon: "icons/Satellite.svg"}
+                        ] : []
                         Column {
                             id: styleChoice
-                            required property string modelData
+                            required property var modelData
                             anchors.horizontalCenter: parent.horizontalCenter
                             SearchToolButton {
-                                id: styleButton
-                                text: styleChoice.modelData === "Standard" ? qsTranslate("AmazonLocationService", "Street map") : qsTranslate("AmazonLocationService", "Satellite")
-                                iconSource: Qt.resolvedUrl(styleChoice.modelData === "Standard" ? "icons/Layers.svg" : "icons/Satellite.svg")
-                                checked: basemap.style === styleChoice.modelData
+                                text: styleChoice.modelData.label
+                                iconSource: Qt.resolvedUrl(styleChoice.modelData.icon)
+                                checked: basemap.style === styleChoice.modelData.id
                                 bgcolor: checked ? Colors.orange : Colors.capsuleSurface
                                 iconColor: checked ? Colors.ink : "white"
-                                onClicked: basemap.selectStyle(styleChoice.modelData)
+                                onClicked: basemap.selectStyle(styleChoice.modelData.id)
                             }
                             Label {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: styleButton.text
+                                text: styleChoice.modelData.label
                                 color: "white"
                                 font: QfTheme.tipFont
-                                TapHandler { onTapped: basemap.selectStyle(styleChoice.modelData) }
+                                TapHandler { onTapped: basemap.selectStyle(styleChoice.modelData.id) }
                             }
                         }
                     }
@@ -574,7 +576,7 @@ Item {
     Item {
         parent: plugin.canvas
         anchors.fill: parent
-        z: 1
+        z: route.z + 1
         Repeater {
             model: plugin.preview ? plugin.stops.concat([plugin.preview]) : plugin.stops
             delegate: Rectangle {
@@ -1494,9 +1496,8 @@ Item {
     CanvasBasemap {
         id: basemap
         canvas: plugin.canvas
-        region: ""
-        apiKey: ""
-        onFailed: plugin.window.displayToast(plugin.mapError)
+        layerName: plugin.serviceName
+        onFailed: plugin.window.displayToast(qsTranslate("AmazonLocationService", "Could not display the map. Check your connection, region and Maps API key permissions, then select the map again."))
     }
 
     Label {
@@ -1504,12 +1505,12 @@ Item {
         visible: basemap.active
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: Math.max(plugin.window.sceneBottomMargin, plugin.canvas.bottomMargin)
-        text: "© Amazon Location Service · " + qsTranslate("AmazonLocationService", "Map data attribution")
+        anchors.bottomMargin: plugin.safeBottomMargin
+        text: "© " + plugin.serviceName + " · " + qsTranslate("AmazonLocationService", "Map data attribution")
         font.pixelSize: 11
         leftPadding: 5
         rightPadding: 5
-        color: "#232f3e"
+        color: Colors.ink
         background: Rectangle { color: "#edffffff"; radius: 3 }
         Accessible.role: Accessible.Link
         Accessible.onPressAction: Qt.openUrlExternally(plugin.attributionUrl)

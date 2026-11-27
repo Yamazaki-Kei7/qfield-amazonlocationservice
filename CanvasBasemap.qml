@@ -5,8 +5,9 @@ import "Basemap.js" as Basemap
 Item {
     id: background
     required property var canvas
-    required property string region
-    required property string apiKey
+    required property string layerName
+    property string region
+    property string apiKey
     property string style: "Standard"
     property bool active: false
     property var surface: null
@@ -22,13 +23,20 @@ Item {
         const layers = settings.layers
         if (!layers.includes(surface.raster)) settings.layers = layers.concat([surface.raster])
     }
-    function release() {
+    // Replaces the canvas raster in one layer-list assignment; null removes it.
+    function swap(holder) {
         const old = surface
-        surface = null
+        surface = holder
+        if (canvas && (old || holder)) {
+            const settings = canvas.mapSettings
+            const kept = old ? settings.layers.filter(layer => layer !== old.raster) : settings.layers
+            settings.layers = holder ? kept.concat([holder.raster]) : kept
+        }
+        if (old) old.destroy()
+    }
+    function release() {
         frame = null
-        if (!old) return
-        if (canvas) canvas.mapSettings.layers = canvas.mapSettings.layers.filter(layer => layer !== old.raster)
-        old.destroy()
+        swap(null)
     }
     function renderFailed(layerId) {
         if (surface && surface.raster.id === layerId) {
@@ -50,7 +58,7 @@ Item {
         if (!next || (frame && Basemap.covers(frame, next.view))) return
         const source = Basemap.rasterSource(next, style, region, apiKey)
         const holder = owner.createObject(background)
-        const raster = QfLayerUtils.loadRasterLayer(source, "Amazon Location Service", "gdal")
+        const raster = QfLayerUtils.loadRasterLayer(source, layerName, "gdal")
         if (raster) holder.data.push(raster)
         if (!raster || !raster.isValid) {
             holder.destroy()
@@ -58,14 +66,13 @@ Item {
             return
         }
         holder.raster = raster
-        release()
         frame = next
-        surface = holder
-        attach()
+        swap(holder)
     }
+    // Selecting the current style again retries after a failure.
     function selectStyle(value) {
-        if (style === value) invalidate()
-        else style = value
+        style = value
+        invalidate()
     }
     function invalidate() {
         frame = null
@@ -83,7 +90,6 @@ Item {
         target: messageLogModel
         enabled: !!background.surface
         function onRowsInserted(parent, first, last) {
-            if (!background.surface) return
             const id = background.surface.raster.id
             for (let row = first; row <= last; ++row) {
                 const message = messageLogModel.data(messageLogModel.index(row, 0), Qt.UserRole)
@@ -96,10 +102,11 @@ Item {
     }
     Connections {
         target: background.canvas.mapSettings
-        function onExtentChanged() { if (background.active) updateTimer.restart() }
-        function onRotationChanged() { if (background.active) updateTimer.restart() }
-        function onOutputSizeChanged() { if (background.active) updateTimer.restart() }
+        enabled: background.active
+        function onExtentChanged() { updateTimer.restart() }
+        function onRotationChanged() { updateTimer.restart() }
+        function onOutputSizeChanged() { updateTimer.restart() }
         function onDestinationCrsChanged() { background.invalidate() }
-        function onLayersChanged() { if (background.active) Qt.callLater(background.attach) }
+        function onLayersChanged() { Qt.callLater(background.attach) }
     }
 }

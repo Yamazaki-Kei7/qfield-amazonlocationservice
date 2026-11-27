@@ -26,8 +26,7 @@ Item {
     }
     property var routeLines: []
     property string basemapStyle: "Standard"
-    readonly property url termsUrl: "https://aws.amazon.com/service-terms/"
-    readonly property url japaneseTermsUrl: "https://d1.awsstatic.com/onedam/marketing-channels/website/public/legal/service-terms/AWS%20Service%20Terms_redline_09.15.26_JA-JP_clean.pdf"
+    readonly property url termsUrl: "https://aws.amazon.com/jp/service-terms/"
     readonly property url attributionUrl: "https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html"
     readonly property string mapError: qsTranslate("AmazonLocationService", "Could not display the map. Check your connection, region and Maps API key permissions, then reopen the map.")
     property var preview: null
@@ -1573,10 +1572,6 @@ Item {
                     LocationButton {
                         text: qsTranslate("AmazonLocationService", "AWS Service Terms")
                         onClicked: Qt.openUrlExternally(plugin.termsUrl)
-                    }
-                    LocationButton {
-                        text: qsTranslate("AmazonLocationService", "Japanese terms (PDF, September 2026)")
-                        onClicked: Qt.openUrlExternally(plugin.japaneseTermsUrl)
                     }
                 }
             }

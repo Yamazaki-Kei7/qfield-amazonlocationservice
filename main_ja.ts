@@ -672,10 +672,6 @@
         <translation>AWS サービス条件</translation>
     </message>
     <message>
-        <source>Japanese terms (PDF, September 2026)</source>
-        <translation>日本語版の利用規約（2026年9月・PDF）</translation>
-    </message>
-    <message>
         <source>Could not display the map. Check your connection, region and Maps API key permissions, then reopen the map.</source>
         <translation>地図を表示できません。通信状態、リージョン、API キーの地図表示権限を確認して、地図を開き直してください。</translation>
     </message>

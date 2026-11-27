@@ -44,7 +44,7 @@ QField の地図で地名や住所を検索し、現在地から目的地まで�
 
 経路の背景地図は、設定したリージョンの Amazon Location Service からオンラインで取得します。タイルの取得は課金対象です。キーの許可リソースに同じリージョンの Maps プロバイダー（東京なら `arn:aws:geo-maps:ap-northeast-1::provider/default`）を含めてください。衛星写真の提供状況はリージョンによって異なります。
 
-利用前に設定画面から AWS サービス条件を確認し、ご自身の責任で地図と検索結果をご利用ください。経路と背景地図の組み合わせに関する条件は第82.5条(b)に記載されています。[AWS サービス条件](https://aws.amazon.com/service-terms/)・[日本語版（2026年9月・PDF）](https://d1.awsstatic.com/onedam/marketing-channels/website/public/legal/service-terms/AWS%20Service%20Terms_redline_09.15.26_JA-JP_clean.pdf)・[地図データの出典](https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html)
+利用前に設定画面から AWS サービス条件を確認し、ご自身の責任で地図と検索結果をご利用ください。経路と背景地図の組み合わせに関する条件は第82.5条(b)に記載されています。[AWS サービス条件](https://aws.amazon.com/jp/service-terms/)・[地図データの出典](https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html)
 
 自動車・徒歩・スクーター・トラックでは、出発地と目的地を含めて最大25か所を指定できます。公共交通機関と「複数の交通手段」は出発地と目的地の2か所を指定し、現在時刻を出発時刻として検索します。
 

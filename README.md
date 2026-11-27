@@ -121,7 +121,7 @@ A successful route search opens **Route map** inside QField. Pan and zoom, switc
 
 The map requests tiles directly from Amazon Location Service in the configured Region. Include the Maps provider resource for that Region in the key, for example `arn:aws:geo-maps:ap-northeast-1::provider/default` for Tokyo. Satellite imagery availability varies by Region. Map tiles are billed separately.
 
-Review the AWS Service Terms in **Settings** and use the maps and search results at your own responsibility. Section 82.5(b) addresses overlaying routes and maps from different providers. [AWS Service Terms](https://aws.amazon.com/service-terms/) · [Map data attribution](https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html)
+Review the AWS Service Terms in **Settings** and use the maps and search results at your own responsibility. Section 82.5(b) addresses overlaying routes and maps from different providers. [AWS Service Terms](https://aws.amazon.com/jp/service-terms/) · [Map data attribution](https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html)
 
 ### Useful details
 

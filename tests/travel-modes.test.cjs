@@ -74,8 +74,8 @@ test("route results show only complete totals, including genuine zeros", () => {
 
 test("route and search failures give English guidance", () => {
     assert.throws(() => routes.requestBody([], "Car"), /valid stops.*travel mode/)
-    assert.throws(() => routes.routeLines({}, {}), /No route.*all legs/)
-    assert.throws(() => routes.routeLines({ Routes: [{ Legs: [{ Geometry: {} }] }] }, {}), /route coordinates/)
+    assert.throws(() => routes.routeWkt({}, {}), /No route.*all legs/)
+    assert.throws(() => routes.routeWkt({ Routes: [{ Legs: [{ Geometry: {} }] }] }, {}), /route coordinates/)
     assert.throws(() => routes.placeResults({}), /search results/)
     assert.match(routes.rejection("Could not find a route", 403, ""), /region.*API key permissions/)
 })
@@ -113,8 +113,8 @@ for (const mode of ["Transit", "Intermodal"]) {
         for (const choice of ["FastestRoute", "ShortestRoute"])
             assert.ok(!("OptimizeRoutingFor" in routes.requestBody(stops.slice(0, 2), mode, choice)))
         assert.throws(() => routes.requestBody(stops, mode))
-        assert.equal(JSON.stringify(routes.routeLines({ Routes: [{ Legs: legs }] }, body)),
-            JSON.stringify(legs.map(leg => leg.Geometry.LineString)))
-        assert.throws(() => routes.routeLines({ Routes: [{ Legs: [] }] }, body))
+        assert.equal(routes.routeWkt({ Routes: [{ Legs: legs }] }, body),
+            "MULTILINESTRING((139 35,140 36),(140 36,141 37))")
+        assert.throws(() => routes.routeWkt({ Routes: [{ Legs: [] }] }, body))
     })
 }

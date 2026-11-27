@@ -13,7 +13,7 @@ Search for a place or address, then get directions to it from your current locat
 | Feature | API key action to allow |
 | --- | --- |
 | Search for places by name or address | `geo-places:SearchText` |
-| Display route basemaps | `geo-maps:GetTile` |
+| Display route basemaps | `geo-maps:GetStaticMap` |
 | Find routes for any travel mode | `geo-routes:CalculateRoutes` |
 | Optimize visit order | `geo-routes:OptimizeWaypoints` |
 
@@ -117,9 +117,9 @@ With Car, Walking, Scooter, or Truck and at least three stops, **Optimize order*
 
 ### View the route on the map
 
-A successful route search opens **Route map** inside QField. Pan and zoom, switch between **Street map** and **Satellite**, or toggle **Stops** and **Route line**. Switching styles keeps the current view and route. Close the map to return to the project. While the result is available, you can reopen **Route map** from the service menu. Place search continues to show its pin on the QField project map.
+After a successful route search, QField turns off every project layer in the layer panel and draws the route on an Amazon street map in the main map canvas. Open the service capsule and choose **Street map** or **Satellite** to change the background. The current extent, stops and route stay in place. Turn a project layer back on in the layer panel to draw it above the Amazon map. Place searches and unsuccessful route searches keep the current background and layer visibility.
 
-The map requests tiles directly from Amazon Location Service in the configured Region. Include the Maps provider resource for that Region in the key, for example `arn:aws:geo-maps:ap-northeast-1::provider/default` for Tokyo. Satellite imagery availability varies by Region. Map tiles are billed separately.
+The plugin requests a georeferenced image from Amazon Location Service when the view moves beyond the current image, the scale changes substantially, or you select a map style. These image requests are billed. Grant the API key access to the Maps provider in the configured Region, for example `arn:aws:geo-maps:ap-northeast-1::provider/default` in Tokyo. Static maps are unavailable for GrabMaps customers in Singapore and Malaysia. [GetStaticMap](https://docs.aws.amazon.com/location/latest/APIReference/API_geomaps_GetStaticMap.html)
 
 Review the AWS Service Terms in **Settings** and use the maps and search results at your own responsibility. Section 82.5(b) addresses overlaying routes and maps from different providers. [AWS Service Terms](https://aws.amazon.com/jp/service-terms/) · [Map data attribution](https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html)
 
@@ -164,10 +164,10 @@ lupdate main.qml PlaceSearch.qml LocationRequest.qml Routes.js -locations none -
 lrelease main_ja.ts -qm main_ja.qm
 ```
 
-The route map uses the bundled MapLibre GL JS 5.24.1 distribution (JS, CSS and license in `map/`). Build the distribution ZIP with the compiled translations.
+Build the distribution ZIP with the compiled translations.
 
 ```sh
-zip amazon-location-service.zip main.qml main_*.qm PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg BasemapView.qml map/* LICENSE
+zip amazon-location-service.zip main.qml main_*.qm PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg CanvasBasemap.qml Basemap.js LICENSE
 ```
 
 Installation from a URL distributes `amazon-location-service.zip` directly from the `main` branch. After changing the source, update `version` in `metadata.txt`, rebuild the ZIP, and commit it.

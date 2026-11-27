@@ -648,10 +648,6 @@
         <translation>リストに戻る</translation>
     </message>
     <message>
-        <source>Route map</source>
-        <translation>経路の地図</translation>
-    </message>
-    <message>
         <source>Street map</source>
         <translation>通常地図</translation>
     </message>
@@ -672,8 +668,8 @@
         <translation>AWS サービス条件</translation>
     </message>
     <message>
-        <source>Could not display the map. Check your connection, region and Maps API key permissions, then reopen the map.</source>
-        <translation>地図を表示できません。通信状態、リージョン、API キーの地図表示権限を確認して、地図を開き直してください。</translation>
+        <source>Could not display the map. Check your connection, region and Maps API key permissions, then select the map again.</source>
+        <translation>地図を表示できません。通信状態、リージョン、API キーの地図表示権限を確認して、カプセル内で地図を選び直してください。</translation>
     </message>
 </context>
 </TS>

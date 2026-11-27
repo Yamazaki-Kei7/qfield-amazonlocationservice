@@ -13,6 +13,7 @@ Search for a place or address, then get directions to it from your current locat
 | Feature | API key action to allow |
 | --- | --- |
 | Search for places by name or address | `geo-places:SearchText` |
+| Display route basemaps | `geo-maps:GetStaticMap` |
 | Find routes for any travel mode | `geo-routes:CalculateRoutes` |
 | Optimize visit order | `geo-routes:OptimizeWaypoints` |
 
@@ -116,11 +117,11 @@ With Car, Walking, Scooter, or Truck and at least three stops, **Optimize order*
 
 ### View the route on the map
 
-Once the search completes, the map displays the entire route. In the example below, the blue line follows roads in the order **1 → 2 → 3**. The route and numbered stops appear as temporary overlays on your project map.
+After a successful route search, QField turns off only the project's raster layers and draws the route on an Amazon street map in the main map canvas. Vector layers, such as facilities and destinations, keep their previous visibility settings. Open the service capsule and choose **Street map** or **Satellite** to change the background. The current extent, stops and route stay in place. Turn a raster layer back on in the layer panel to draw it above the Amazon map. Place searches and unsuccessful route searches keep the current background and layer visibility.
 
-A card at the bottom of the map shows the estimated travel time and total distance. Open the Amazon Location capsule at the upper right and switch **Stops** or **Route line** off to see features underneath. Both switches are available before a search and after you close the result card. Switch either one back on to restore it without searching again. Your choices carry over to the next search.
+The plugin requests a georeferenced image from Amazon Location Service when the view moves beyond the current image, the scale changes substantially, or you select a map style. These image requests are billed. Grant the API key access to the Maps provider in the configured Region, for example `arn:aws:geo-maps:ap-northeast-1::provider/default` in Tokyo. Static maps are unavailable for GrabMaps customers in Singapore and Malaysia. [GetStaticMap](https://docs.aws.amazon.com/location/latest/APIReference/API_geomaps_GetStaticMap.html)
 
-<img src="img/driving-route-result.png" alt="Map with a blue driving route from origin 1 through waypoint 2 to destination 3" width="360">
+Review the AWS Service Terms in **Settings** and use the maps and search results at your own responsibility. Section 82.5(b) addresses overlaying routes and maps from different providers. [AWS Service Terms](https://aws.amazon.com/jp/service-terms/) · [Map data attribution](https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html)
 
 ### Useful details
 
@@ -166,7 +167,7 @@ lrelease main_ja.ts -qm main_ja.qm
 Build the distribution ZIP with the compiled translations.
 
 ```sh
-zip amazon-location-service.zip main.qml main_*.qm PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg LICENSE
+zip amazon-location-service.zip main.qml main_*.qm PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg CanvasBasemap.qml Basemap.js LICENSE
 ```
 
 Installation from a URL distributes `amazon-location-service.zip` directly from the `main` branch. After changing the source, update `version` in `metadata.txt`, rebuild the ZIP, and commit it.

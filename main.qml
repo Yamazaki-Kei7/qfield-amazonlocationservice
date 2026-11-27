@@ -24,6 +24,8 @@ Item {
         const p = toWgs84(gnss.projectedPosition, canvas.mapSettings.destinationCrs)
         return Routes.validPosition(p) ? p : null
     }
+    readonly property url termsUrl: "https://aws.amazon.com/jp/service-terms/"
+    readonly property url attributionUrl: "https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html"
     property var preview: null
     property bool needsOrigin: false
     property var stops: []
@@ -64,7 +66,8 @@ Item {
     readonly property int gutter: 16
     readonly property int stopMarkerSize: 24
     readonly property int touchHeight: 44
-    readonly property real overlayBottomMargin: Math.max(window.sceneBottomMargin, canvas.bottomMargin) + gutter
+    readonly property real safeBottomMargin: Math.max(window.sceneBottomMargin, canvas.bottomMargin)
+    readonly property real overlayBottomMargin: safeBottomMargin + gutter
     readonly property string region: regionField.text.trim()
     readonly property string apiKey: keyField.text.trim()
     readonly property int maxStops: Routes.stopLimit(travelMode.id)
@@ -291,11 +294,12 @@ Item {
         const cos = Math.abs(Math.cos(angle))
         const sin = Math.abs(Math.sin(angle))
         const inset = stopMarkerSize / 2 + gutter
-        // Fit the numbered stops in the part of the map above the result card.
+        const horizontalInset = Math.max(inset, searchGroup.implicitWidth + gutter)
+        // Fit the numbered stops above the result card and clear of the service capsule.
         const cardTop = resultCard.mapToItem(canvas, 0, 0).y
         const covered = Math.max(0, Math.min(canvas.height - 2 * inset - 1, canvas.height - cardTop))
         const unitsPerPoint = Math.max(
-            (bounds.width * cos + bounds.height * sin) / Math.max(1, canvas.width - 2 * inset),
+            (bounds.width * cos + bounds.height * sin) / Math.max(1, canvas.width - 2 * horizontalInset),
             (bounds.width * sin + bounds.height * cos) / Math.max(1, canvas.height - covered - 2 * inset))
         const center = bounds.center
         if (!unitsPerPoint) {
@@ -327,6 +331,17 @@ Item {
                 pickMode = ""
                 panel.close()
                 fitRouteOnMap(geometry)
+                // The source model includes layers inside collapsed groups.
+                const tree = flatLayerTree.sourceModel
+                for (let row = 0; row < tree.rowCount(); ++row) {
+                    const index = tree.index(row, 0)
+                    if (tree.data(index, QfFlatLayerTreeModel.Type) === QfFlatLayerTreeModel.Layer
+                            && tree.data(index, QfFlatLayerTreeModel.LayerType) === "rasterlayer")
+                        tree.setData(index, false, QfFlatLayerTreeModel.Visible)
+                }
+                basemap.region = region
+                basemap.apiKey = apiKey
+                basemap.active = true
             } catch (error) {
                 message = error instanceof SyntaxError ? qsTranslate("AmazonLocationService", "Could not read the route response.") : error.message
             }
@@ -378,6 +393,7 @@ Item {
     Connections {
         target: iface
         function onLoadProjectTriggered() {
+            basemap.active = false
             plugin.pickMode = ""
             settingsPopup.close()
             places.close()
@@ -500,6 +516,32 @@ Item {
                             plugin.pickMode = ""
                             plugin.preview = null
                             panel.open()
+                        }
+                    }
+                    Repeater {
+                        model: basemap.active ? [
+                            {id: "Standard", label: qsTranslate("AmazonLocationService", "Street map"), icon: "icons/Layers.svg"},
+                            {id: "Satellite", label: qsTranslate("AmazonLocationService", "Satellite"), icon: "icons/Satellite.svg"}
+                        ] : []
+                        Column {
+                            id: styleChoice
+                            required property var modelData
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            SearchToolButton {
+                                text: styleChoice.modelData.label
+                                iconSource: Qt.resolvedUrl(styleChoice.modelData.icon)
+                                checked: basemap.style === styleChoice.modelData.id
+                                bgcolor: checked ? Colors.orange : Colors.capsuleSurface
+                                iconColor: checked ? Colors.ink : "white"
+                                onClicked: basemap.selectStyle(styleChoice.modelData.id)
+                            }
+                            Label {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: styleChoice.modelData.label
+                                color: "white"
+                                font: QfTheme.tipFont
+                                TapHandler { onTapped: basemap.selectStyle(styleChoice.modelData.id) }
+                            }
                         }
                     }
                     Rectangle {
@@ -1451,10 +1493,36 @@ Item {
         }
     }
 
+    CanvasBasemap {
+        id: basemap
+        canvas: plugin.canvas
+        layerName: plugin.serviceName
+        onFailed: plugin.window.displayToast(qsTranslate("AmazonLocationService", "Could not display the map. Check your connection, region and Maps API key permissions, then select the map again."))
+    }
+
+    Label {
+        parent: plugin.canvas.parent
+        visible: basemap.active
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: plugin.safeBottomMargin
+        text: "© " + plugin.serviceName + " · " + qsTranslate("AmazonLocationService", "Map data attribution")
+        font.pixelSize: 11
+        leftPadding: 5
+        rightPadding: 5
+        color: Colors.ink
+        background: Rectangle { color: "#edffffff"; radius: 3 }
+        Accessible.role: Accessible.Link
+        Accessible.onPressAction: Qt.openUrlExternally(plugin.attributionUrl)
+        TapHandler { onTapped: Qt.openUrlExternally(plugin.attributionUrl) }
+    }
+
     RoutePopup {
         id: settingsPopup
         height: Math.min(390, parent.height - 16)
         onAboutToHide: {
+            basemap.region = regionField.validRegion ? plugin.region : ""
+            basemap.apiKey = plugin.apiKey
             connectionSettings.setValue("region", plugin.region)
             connectionSettings.setValue("apiKey", rememberKey.checked ? plugin.apiKey : "")
             connectionSettings.sync()
@@ -1498,8 +1566,17 @@ Item {
                     Label {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: plugin.connectionHint || qsTranslate("AmazonLocationService", "These settings apply to place and route searches.")
+                        text: plugin.connectionHint || qsTranslate("AmazonLocationService", "These settings apply to maps, place searches and routes.")
                         color: QfTheme.secondaryTextColor
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        text: qsTranslate("AmazonLocationService", "Please review the AWS Service Terms and use the maps and search results at your own responsibility.")
+                    }
+                    LocationButton {
+                        text: qsTranslate("AmazonLocationService", "AWS Service Terms")
+                        onClicked: Qt.openUrlExternally(plugin.termsUrl)
                     }
                 }
             }

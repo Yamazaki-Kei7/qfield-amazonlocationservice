@@ -335,7 +335,8 @@ Item {
                 const tree = flatLayerTree.sourceModel
                 for (let row = 0; row < tree.rowCount(); ++row) {
                     const index = tree.index(row, 0)
-                    if (tree.data(index, QfFlatLayerTreeModel.Type) === QfFlatLayerTreeModel.Layer)
+                    if (tree.data(index, QfFlatLayerTreeModel.Type) === QfFlatLayerTreeModel.Layer
+                            && tree.data(index, QfFlatLayerTreeModel.LayerType) === "rasterlayer")
                         tree.setData(index, false, QfFlatLayerTreeModel.Visible)
                 }
                 basemap.region = region

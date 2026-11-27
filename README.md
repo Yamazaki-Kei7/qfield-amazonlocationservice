@@ -117,7 +117,7 @@ With Car, Walking, Scooter, or Truck and at least three stops, **Optimize order*
 
 ### View the route on the map
 
-After a successful route search, QField turns off every project layer in the layer panel and draws the route on an Amazon street map in the main map canvas. Open the service capsule and choose **Street map** or **Satellite** to change the background. The current extent, stops and route stay in place. Turn a project layer back on in the layer panel to draw it above the Amazon map. Place searches and unsuccessful route searches keep the current background and layer visibility.
+After a successful route search, QField turns off only the project's raster layers and draws the route on an Amazon street map in the main map canvas. Vector layers, such as facilities and destinations, keep their previous visibility settings. Open the service capsule and choose **Street map** or **Satellite** to change the background. The current extent, stops and route stay in place. Turn a raster layer back on in the layer panel to draw it above the Amazon map. Place searches and unsuccessful route searches keep the current background and layer visibility.
 
 The plugin requests a georeferenced image from Amazon Location Service when the view moves beyond the current image, the scale changes substantially, or you select a map style. These image requests are billed. Grant the API key access to the Maps provider in the configured Region, for example `arn:aws:geo-maps:ap-northeast-1::provider/default` in Tokyo. Static maps are unavailable for GrabMaps customers in Singapore and Malaysia. [GetStaticMap](https://docs.aws.amazon.com/location/latest/APIReference/API_geomaps_GetStaticMap.html)
 

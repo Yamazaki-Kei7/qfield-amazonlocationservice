@@ -383,8 +383,8 @@
         <translation>この端末にAPIキーを保存</translation>
     </message>
     <message>
-        <source>These settings apply to place and route searches.</source>
-        <translation>この設定は地点検索と経路検索で共通です。</translation>
+        <source>These settings apply to maps, place searches and routes.</source>
+        <translation>この設定は背景地図、地点検索、経路探索で共通です。</translation>
     </message>
     <message>
         <source>Select Features</source>
@@ -646,6 +646,38 @@
     <message>
         <source>Back to list</source>
         <translation>リストに戻る</translation>
+    </message>
+    <message>
+        <source>Route map</source>
+        <translation>経路の地図</translation>
+    </message>
+    <message>
+        <source>Street map</source>
+        <translation>通常地図</translation>
+    </message>
+    <message>
+        <source>Satellite</source>
+        <translation>衛星写真</translation>
+    </message>
+    <message>
+        <source>Map data attribution</source>
+        <translation>地図データの出典</translation>
+    </message>
+    <message>
+        <source>Please review the AWS Service Terms and use the maps and search results at your own responsibility.</source>
+        <translation>AWS サービス条件をご確認のうえ、地図と検索結果はご自身の責任でご利用ください。</translation>
+    </message>
+    <message>
+        <source>AWS Service Terms</source>
+        <translation>AWS サービス条件</translation>
+    </message>
+    <message>
+        <source>Japanese terms (PDF, September 2026)</source>
+        <translation>日本語版の利用規約（2026年9月・PDF）</translation>
+    </message>
+    <message>
+        <source>Could not display the map. Check your connection, region and Maps API key permissions, then reopen the map.</source>
+        <translation>地図を表示できません。通信状態、リージョン、API キーの地図表示権限を確認して、地図を開き直してください。</translation>
     </message>
 </context>
 </TS>

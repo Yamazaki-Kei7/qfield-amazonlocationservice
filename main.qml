@@ -24,6 +24,12 @@ Item {
         const p = toWgs84(gnss.projectedPosition, canvas.mapSettings.destinationCrs)
         return Routes.validPosition(p) ? p : null
     }
+    property var routeLines: []
+    property string basemapStyle: "Standard"
+    readonly property url termsUrl: "https://aws.amazon.com/service-terms/"
+    readonly property url japaneseTermsUrl: "https://d1.awsstatic.com/onedam/marketing-channels/website/public/legal/service-terms/AWS%20Service%20Terms_redline_09.15.26_JA-JP_clean.pdf"
+    readonly property url attributionUrl: "https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html"
+    readonly property string mapError: qsTranslate("AmazonLocationService", "Could not display the map. Check your connection, region and Maps API key permissions, then reopen the map.")
     property var preview: null
     property bool needsOrigin: false
     property var stops: []
@@ -263,7 +269,7 @@ Item {
     function clearRoute() {
         routeRequest.cancel()
         optimizeRequest.cancel()
-        route.geometryWrapper.clear()
+        routeLines = []
         routeSummary = ""
         message = ""
         optimizeNote = ""
@@ -273,43 +279,13 @@ Item {
         if (picking && message) window.displayToast(message)
     }
 
-    function fitRouteOnMap(geometry) {
-        const settings = canvas.mapSettings
-        const projected = QfGeometryUtils.reprojectGeometry(geometry, wgs84, settings.destinationCrs)
-        const bounds = QfGeometryUtils.boundingBox(projected)
-        // A selected stop can be outside the route when the service snaps it to a road.
-        for (const stop of stops) {
-            const p = toMapCrs(stop.position)
-            bounds.xMinimum = Math.min(bounds.xMinimum, p.x)
-            bounds.xMaximum = Math.max(bounds.xMaximum, p.x)
-            bounds.yMinimum = Math.min(bounds.yMinimum, p.y)
-            bounds.yMaximum = Math.max(bounds.yMaximum, p.y)
-        }
-
-        // Measure the bounds along the screen axes, including when the map is rotated.
-        const angle = settings.rotation * Math.PI / 180
-        const cos = Math.abs(Math.cos(angle))
-        const sin = Math.abs(Math.sin(angle))
-        const inset = stopMarkerSize / 2 + gutter
-        // Fit the numbered stops in the part of the map above the result card.
-        const cardTop = resultCard.mapToItem(canvas, 0, 0).y
-        const covered = Math.max(0, Math.min(canvas.height - 2 * inset - 1, canvas.height - cardTop))
-        const unitsPerPoint = Math.max(
-            (bounds.width * cos + bounds.height * sin) / Math.max(1, canvas.width - 2 * inset),
-            (bounds.width * sin + bounds.height * cos) / Math.max(1, canvas.height - covered - 2 * inset))
-        const center = bounds.center
-        if (!unitsPerPoint) {
-            settings.setCenter(QfGeometryUtils.point(center.x, center.y))
+    function openBasemap() {
+        if (!routeLines.length) return
+        if (connectionHint) {
+            settingsPopup.open()
             return
         }
-        const halfWidth = unitsPerPoint * canvas.width / 2
-        const halfHeight = unitsPerPoint * canvas.height / 2
-        const shift = covered * unitsPerPoint / 2
-        const x = center.x + Math.sin(angle) * shift
-        const y = center.y - Math.cos(angle) * shift
-        iface.setMapExtent(QfGeometryUtils.createRectangleFromPoints(
-            QfGeometryUtils.point(x - halfWidth, y - halfHeight),
-            QfGeometryUtils.point(x + halfWidth, y + halfHeight)))
+        basemap.open()
     }
 
     function search() {
@@ -319,14 +295,12 @@ Item {
         routeRequest.post("routes", "routes", body, text => {
             try {
                 const data = JSON.parse(text)
-                const geometry = QfGeometryUtils.createGeometryFromWkt(Routes.routeWkt(data, body))
-                route.geometryWrapper.crs = wgs84
-                route.geometryWrapper.qgsGeometry = geometry
+                routeLines = Routes.routeLines(data, body)
                 routeSummary = Routes.routeSummary(data.Routes[0])
                 summaryDismissed = false
                 pickMode = ""
                 panel.close()
-                fitRouteOnMap(geometry)
+                openBasemap()
             } catch (error) {
                 message = error instanceof SyntaxError ? qsTranslate("AmazonLocationService", "Could not read the route response.") : error.message
             }
@@ -502,6 +476,12 @@ Item {
                             panel.open()
                         }
                     }
+                    SearchToolButton {
+                        visible: plugin.routeLines.length > 0
+                        text: qsTranslate("AmazonLocationService", "Route map")
+                        iconSource: Qt.resolvedUrl("icons/Layers.svg")
+                        onClicked: plugin.openBasemap()
+                    }
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: serviceButton.width / 2
@@ -521,20 +501,10 @@ Item {
         }
     }
 
-    QfGeometryRenderer {
-        id: route
-        visible: plugin.showRouteLine
-        parent: plugin.canvas
-        anchors.fill: parent
-        mapSettings: plugin.canvas.mapSettings
-        color: "#0079bd"
-        lineWidth: 5
-    }
-
     Item {
         parent: plugin.canvas
         anchors.fill: parent
-        z: route.z + 1
+        z: 1
         Repeater {
             model: plugin.preview ? plugin.stops.concat([plugin.preview]) : plugin.stops
             delegate: Rectangle {
@@ -1452,6 +1422,100 @@ Item {
     }
 
     RoutePopup {
+        id: basemap
+        width: Math.min(900, parent.width - 8)
+        height: parent.height - 16
+        property bool pageFailed: false
+        onAboutToShow: pageFailed = false
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
+            PanelHeader {
+                title: qsTranslate("AmazonLocationService", "Route map")
+                onDismissed: basemap.close()
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                Repeater {
+                    model: ["Standard", "Satellite"]
+                    LocationButton {
+                        required property string modelData
+                        text: modelData === "Standard" ? qsTranslate("AmazonLocationService", "Street map") : qsTranslate("AmazonLocationService", "Satellite")
+                        checked: plugin.basemapStyle === modelData
+                        onClicked: {
+                            plugin.basemapStyle = modelData
+                            if (mapLoader.item) mapLoader.item.invoke("changeStyle", [modelData])
+                        }
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                Layout.leftMargin: plugin.gutter
+                Layout.rightMargin: plugin.gutter
+                visible: text.length > 0
+                textFormat: Text.PlainText
+                text: plugin.routeSummary
+                wrapMode: Text.Wrap
+            }
+            Loader {
+                id: mapLoader
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                active: basemap.visible
+                visible: !basemap.pageFailed && status !== Loader.Error
+                source: Qt.resolvedUrl("BasemapView.qml")
+            }
+            Connections {
+                target: mapLoader.item
+                function onFailed() { basemap.pageFailed = true }
+                function onReady() {
+                    mapLoader.item.invoke("openMap", [{
+                        endpoint: "https://maps.geo." + plugin.region + ".amazonaws.com",
+                        key: plugin.apiKey, style: plugin.basemapStyle,
+                        stops: plugin.stops.map(stop => stop.position), lines: plugin.routeLines,
+                        stopsVisible: plugin.showRouteStops, lineVisible: plugin.showRouteLine,
+                        errorText: plugin.mapError
+                    }], ok => { if (!ok) basemap.pageFailed = true })
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.margins: plugin.gutter
+                visible: basemap.pageFailed || mapLoader.status === Loader.Error
+                text: plugin.mapError
+                wrapMode: Text.Wrap
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                CheckBox {
+                    text: stopsSwitch.text
+                    checked: plugin.showRouteStops
+                    onToggled: {
+                        plugin.showRouteStops = checked
+                        if (mapLoader.item) mapLoader.item.invoke("updateOverlays", [checked, plugin.showRouteLine])
+                    }
+                }
+                CheckBox {
+                    text: routeLineSwitch.text
+                    checked: plugin.showRouteLine
+                    onToggled: {
+                        plugin.showRouteLine = checked
+                        if (mapLoader.item) mapLoader.item.invoke("updateOverlays", [plugin.showRouteStops, checked])
+                    }
+                }
+            }
+            LocationButton {
+                Layout.alignment: Qt.AlignHCenter
+                text: qsTranslate("AmazonLocationService", "Map data attribution")
+                onClicked: Qt.openUrlExternally(plugin.attributionUrl)
+            }
+        }
+    }
+
+    RoutePopup {
         id: settingsPopup
         height: Math.min(390, parent.height - 16)
         onAboutToHide: {
@@ -1498,8 +1562,21 @@ Item {
                     Label {
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: plugin.connectionHint || qsTranslate("AmazonLocationService", "These settings apply to place and route searches.")
+                        text: plugin.connectionHint || qsTranslate("AmazonLocationService", "These settings apply to maps, place searches and routes.")
                         color: QfTheme.secondaryTextColor
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        text: qsTranslate("AmazonLocationService", "Please review the AWS Service Terms and use the maps and search results at your own responsibility.")
+                    }
+                    LocationButton {
+                        text: qsTranslate("AmazonLocationService", "AWS Service Terms")
+                        onClicked: Qt.openUrlExternally(plugin.termsUrl)
+                    }
+                    LocationButton {
+                        text: qsTranslate("AmazonLocationService", "Japanese terms (PDF, September 2026)")
+                        onClicked: Qt.openUrlExternally(plugin.japaneseTermsUrl)
                     }
                 }
             }

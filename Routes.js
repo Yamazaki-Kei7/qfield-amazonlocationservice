@@ -59,18 +59,17 @@ function requestBody(stops, mode, preference) {
     return body
 }
 
-function routeWkt(response, body) {
+function routeLines(response, body) {
     const route = response.Routes && response.Routes[0]
     if (!route || !Array.isArray(route.Legs) || !route.Legs.length
             || (body.Waypoints && route.Legs.length !== body.Waypoints.length + 1))
         throw new Error(qsTranslate("AmazonLocationService", "No route was found for all legs."))
-    const legs = route.Legs.map(leg => {
+    return route.Legs.map(leg => {
         const line = leg.Geometry && leg.Geometry.LineString
         if (!Array.isArray(line) || line.length < 2 || !line.every(validPosition))
             throw new Error(qsTranslate("AmazonLocationService", "Could not read the route coordinates."))
-        return "(" + line.map(p => p[0] + " " + p[1]).join(",") + ")"
+        return line.map(p => [p[0], p[1]])
     })
-    return "MULTILINESTRING(" + legs.join(",") + ")"
 }
 
 function rejection(failed, status, responseText) {

@@ -13,6 +13,7 @@ Search for a place or address, then get directions to it from your current locat
 | Feature | API key action to allow |
 | --- | --- |
 | Search for places by name or address | `geo-places:SearchText` |
+| Display route basemaps | `geo-maps:GetTile` |
 | Find routes for any travel mode | `geo-routes:CalculateRoutes` |
 | Optimize visit order | `geo-routes:OptimizeWaypoints` |
 
@@ -116,11 +117,11 @@ With Car, Walking, Scooter, or Truck and at least three stops, **Optimize order*
 
 ### View the route on the map
 
-Once the search completes, the map displays the entire route. In the example below, the blue line follows roads in the order **1 → 2 → 3**. The route and numbered stops appear as temporary overlays on your project map.
+A successful route search opens **Route map** inside QField. Pan and zoom, switch between **Street map** and **Satellite**, or toggle **Stops** and **Route line**. Switching styles keeps the current view and route. Close the map to return to the project. While the result is available, you can reopen **Route map** from the service menu. Place search continues to show its pin on the QField project map.
 
-A card at the bottom of the map shows the estimated travel time and total distance. Open the Amazon Location capsule at the upper right and switch **Stops** or **Route line** off to see features underneath. Both switches are available before a search and after you close the result card. Switch either one back on to restore it without searching again. Your choices carry over to the next search.
+The map requests tiles directly from Amazon Location Service in the configured Region. Include the Maps provider resource for that Region in the key, for example `arn:aws:geo-maps:ap-northeast-1::provider/default` for Tokyo. Satellite imagery availability varies by Region. Map tiles are billed separately.
 
-<img src="img/driving-route-result.png" alt="Map with a blue driving route from origin 1 through waypoint 2 to destination 3" width="360">
+Review the AWS Service Terms in **Settings** and use the maps and search results at your own responsibility. Section 82.5(b) addresses overlaying routes and maps from different providers. [AWS Service Terms](https://aws.amazon.com/service-terms/) · [Map data attribution](https://docs.aws.amazon.com/location/latest/developerguide/data-attribution.html)
 
 ### Useful details
 
@@ -163,10 +164,10 @@ lupdate main.qml PlaceSearch.qml LocationRequest.qml Routes.js -locations none -
 lrelease main_ja.ts -qm main_ja.qm
 ```
 
-Build the distribution ZIP with the compiled translations.
+The route map uses the bundled MapLibre GL JS 5.24.1 distribution (JS, CSS and license in `map/`). Build the distribution ZIP with the compiled translations.
 
 ```sh
-zip amazon-location-service.zip main.qml main_*.qm PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg LICENSE
+zip amazon-location-service.zip main.qml main_*.qm PlaceSearch.qml LocationRequest.qml LocationButton.qml ButtonColors.js Routes.js metadata.txt icon.svg poi-search.svg Arch_Amazon-Location-Service_32.svg icons/*.svg BasemapView.qml map/* LICENSE
 ```
 
 Installation from a URL distributes `amazon-location-service.zip` directly from the `main` branch. After changing the source, update `version` in `metadata.txt`, rebuild the ZIP, and commit it.
